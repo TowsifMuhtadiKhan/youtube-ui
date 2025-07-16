@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Siderbar";
 import MainContent from "./components/MainContainer";
+import { BrowserRouter as Router } from "react-router-dom";
 
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
@@ -53,9 +54,13 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <Header onToggleSidebar={handleToggleSidebar} />
-      <Sidebar isSidebarExpanded={isSidebarExpanded} />
-      <MainContent isSidebarExpanded={isSidebarExpanded} />
+      <Router>
+        {" "}
+        {/* Add this wrapper */}
+        <Header onToggleSidebar={handleToggleSidebar} />
+        <Sidebar isSidebarExpanded={isSidebarExpanded} />
+        <MainContent isSidebarExpanded={isSidebarExpanded} />
+      </Router>
     </ThemeProvider>
   );
 };
