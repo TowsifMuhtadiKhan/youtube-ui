@@ -1,0 +1,63 @@
+import React, { useState } from "react";
+import Header from "./components/Header";
+import Sidebar from "./components/Siderbar";
+import MainContent from "./components/MainContainer";
+
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+
+const theme = createTheme({
+  typography: {
+    allVariants: {
+      color: "white",
+      fontSize: "14px",
+    },
+  },
+  components: {
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#4e4e4eff",
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#090909",
+        },
+        indicator: {
+          backgroundColor: "#eeeeeeff",
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          color: "#949494ff", // Default tab color
+          textTransform: "none",
+          "&.Mui-selected": {
+            color: "#eeeeeeff", // Selected tab color
+          },
+        },
+      },
+    },
+  },
+});
+
+const App: React.FC = () => {
+  const [isSidebarExpanded, setSidebarExpanded] = useState(true);
+
+  const handleToggleSidebar = () => {
+    setSidebarExpanded((prevState) => !prevState);
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Header onToggleSidebar={handleToggleSidebar} />
+      <Sidebar isSidebarExpanded={isSidebarExpanded} />
+      <MainContent isSidebarExpanded={isSidebarExpanded} />
+    </ThemeProvider>
+  );
+};
+
+export default App;
