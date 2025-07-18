@@ -1,5 +1,13 @@
 import React, { type JSX } from "react";
-import { Box, Divider, Drawer, Typography, IconButton } from "@mui/material";
+import {
+  Box,
+  Divider,
+  Drawer,
+  Typography,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import {
   Home as HomeIcon,
@@ -23,6 +31,10 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
   const navigate = useNavigate(); // Initialize navigate
+  const theme = useTheme();
+
+  // Use Media Query to detect mobile screen sizes
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Define sections
   const sections = [
@@ -133,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
   return (
     <Drawer
       sx={{
-        width: isSidebarExpanded ? 240 : 80,
+        width: isMobile ? 80 : isSidebarExpanded ? 240 : 80,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
           width: isSidebarExpanded ? 240 : 80,
