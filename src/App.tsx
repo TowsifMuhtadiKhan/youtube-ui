@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Siderbar";
 import MainContent from "./components/MainContainer";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { Shorts } from "./components/Shorts";
+import { Subscription } from "./components/Subscription";
 
 const theme = createTheme({
   typography: {
@@ -59,7 +61,25 @@ const App: React.FC = () => {
         {/* Add this wrapper */}
         <Header onToggleSidebar={handleToggleSidebar} />
         <Sidebar isSidebarExpanded={isSidebarExpanded} />
-        <MainContent isSidebarExpanded={isSidebarExpanded} />
+        <Routes>
+          <Route
+            path="/"
+            element={<MainContent isSidebarExpanded={isSidebarExpanded} />}
+          />
+          <Route
+            path="/home"
+            element={<MainContent isSidebarExpanded={isSidebarExpanded} />}
+          />
+          <Route
+            path="/shorts"
+            element={<Shorts isSidebarExpanded={isSidebarExpanded} />}
+          />
+          <Route
+            path="/subscriptions"
+            element={<Subscription isSidebarExpanded={isSidebarExpanded} />}
+          />
+          {/* Define other routes here */}
+        </Routes>
       </Router>
     </ThemeProvider>
   );
