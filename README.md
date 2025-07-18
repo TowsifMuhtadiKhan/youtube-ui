@@ -1,69 +1,33 @@
-# React + TypeScript + Vite
+# YouTube Shorts UI Clone
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project is a simple clone of YouTube's Shorts UI, implemented using React and Material-UI. It demonstrates how to display YouTube Shorts videos in a responsive, scrollable layout with infinite scroll functionality that loads new videos as the user scrolls down. This UI can be integrated with a backend API to fetch actual video data in a real-world application.
 
-Currently, two official plugins are available:
+## Project Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **UI Layout**: The UI mimics the YouTube Shorts layout, displaying embedded YouTube Shorts videos within an interactive scrollable container.
+- **Infinite Scroll**: When the user scrolls to the bottom of the screen, more Shorts videos are loaded, mimicking the infinite scrolling experience.
+- **Responsive Design**: The layout adapts to different screen sizes (mobile, tablet, desktop), making the user experience consistent across devices.
 
-## Expanding the ESLint configuration
+## Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Embedded YouTube Shorts videos using `iframe`.
+- Scrollable container with infinite scrolling to load more videos as the user scrolls.
+- Mobile-first responsive design, with the sidebar collapsing on smaller screens.
+- Uses Material-UI for styling and responsive layouts.
+- The app is set up with React and React Router for navigation.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Technologies Used
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+- **React**: JavaScript library for building user interfaces.
+- **Material-UI**: A React component library for faster and easier web development.
+- **React Router**: For handling navigation between different views (Home, Shorts, etc.).
+- **CSS (via Material-UI's `sx` prop)**: For custom styling and layout adjustments.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## How to Set Up and Run the Project
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 1. Clone the repository
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+First, clone this repository to your local machine:
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+```bash
+git clone https://github.com/your-username/shorts-ui-clone.git
