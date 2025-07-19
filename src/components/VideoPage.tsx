@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Button, Grid, IconButton, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Grid,
+  IconButton,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import videoData from "./data.json";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -15,6 +23,8 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const { id } = useParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const videoEmbedUrl = `https://www.youtube.com/embed/${id}?rel=0&autoplay=1&enablejsapi=1`;
 
@@ -112,7 +122,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
             <iframe
               ref={iframeRef}
               width="100%"
-              height="600"
+              height={isMobile ? "200" : "600"}
               src={videoEmbedUrl}
               title="YouTube video player"
               frameBorder="0"
@@ -160,7 +170,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               sx={{
                 color: "#fff",
                 fontWeight: "bold",
-                fontSize: "24px",
+                fontSize: isMobile ? "14px" : "24px",
                 marginTop: 2,
               }}
               px={2}
@@ -178,10 +188,12 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               {/* Previous Button */}
               <Button
                 variant="outlined"
+                size="small"
                 sx={{
                   backgroundColor: "#333",
                   color: "#fff",
                   borderColor: "#555",
+                  textTransform: "none",
                   "&:hover": {
                     backgroundColor: "#444",
                   },
@@ -196,10 +208,12 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               {/* Next Button */}
               <Button
                 variant="outlined"
+                size="small"
                 sx={{
                   backgroundColor: "#333",
                   color: "#fff",
                   borderColor: "#555",
+                  textTransform: "none",
                   "&:hover": {
                     backgroundColor: "#444",
                   },
@@ -295,12 +309,12 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                     >
                       <Box
                         style={{
-                          height: 100,
-                          minWidth: 150,
+                          height: isMobile ? 50 : 100,
+                          minWidth: isMobile ? 70 : 150,
                           backgroundImage: `url(${video.thumbnail})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
-                          borderRadius: "20px",
+                          borderRadius: isMobile ? "15px" : "20px",
                           cursor: "pointer",
                           transition: "transform 0.3s ease-in-out",
                           marginRight: 10,
@@ -321,7 +335,10 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                         >
                           <Box>
                             <Typography
-                              sx={{ fontWeight: "bold", fontSize: 16 }}
+                              sx={{
+                                fontWeight: "bold",
+                                fontSize: isMobile ? 13 : 14,
+                              }}
                             >
                               <a
                                 href={video.link}
@@ -334,7 +351,9 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                                   lineHeight: 1.5,
                                 }}
                               >
-                                {video.title}
+                                {video.title.length > 50
+                                  ? `${video.title.substring(0, 40)}...`
+                                  : video.title}
                               </a>
                             </Typography>
                             <Typography
@@ -344,7 +363,9 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                                 marginTop: 1,
                               }}
                             >
-                              {video.subTitle}
+                              {video.subTitle.length > 100
+                                ? `${video.subTitle.substring(0, 90)}...`
+                                : video.subTitle}
                             </Typography>
                           </Box>
                           <MoreVertIcon sx={{ color: "#888", fontSize: 24 }} />

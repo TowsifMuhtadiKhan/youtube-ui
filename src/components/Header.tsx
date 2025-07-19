@@ -109,11 +109,21 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           {/* Left Section - Logo & Menu */}
           <Box display="flex" alignItems="center" gap={1}>
-            <IconButton edge="start" color="inherit" onClick={onToggleSidebar}>
-              <MenuIcon />
-            </IconButton>
-
-            <img src={Logo} alt="Logo" style={{ height: 30, marginRight: 2 }} />
+            {!isMobile && (
+              <IconButton
+                edge="start"
+                color="inherit"
+                onClick={onToggleSidebar}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
+            <img
+              src={Logo}
+              alt="Logo"
+              style={{ height: 30, marginRight: 2 }}
+              onClick={() => navigate("/")}
+            />
             {!isMobile && (
               <Typography
                 fontSize={isTablet ? "18px" : "20px"}
