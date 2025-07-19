@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Siderbar";
 import MainContent from "./components/MainContainer";
@@ -8,6 +8,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Shorts } from "./components/Shorts";
 import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
+import { useMediaQuery } from "@mui/material";
 
 const theme = createTheme({
   typography: {
@@ -37,10 +38,10 @@ const theme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          color: "#949494ff", // Default tab color
+          color: "#949494ff",
           textTransform: "none",
           "&.Mui-selected": {
-            color: "#eeeeeeff", // Selected tab color
+            color: "#eeeeeeff",
           },
         },
       },
@@ -49,11 +50,16 @@ const theme = createTheme({
 });
 
 const App: React.FC = () => {
-  const [isSidebarExpanded, setSidebarExpanded] = useState(true);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [isSidebarExpanded, setSidebarExpanded] = useState(!isMobile);
 
   const handleToggleSidebar = () => {
     setSidebarExpanded((prevState) => !prevState);
   };
+
+  useEffect(() => {
+    setSidebarExpanded(!isMobile);
+  }, [isMobile]);
 
   return (
     <ThemeProvider theme={theme}>
