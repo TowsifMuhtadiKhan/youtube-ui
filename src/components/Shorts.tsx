@@ -1,79 +1,137 @@
-import { Box } from "@mui/material";
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
+import {
+  Box,
+  Typography,
+  Grid,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardMedia,
+  CardContent,
+  Chip,
+  IconButton,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import driveData from "./driveData.json"; // Your provided JSON data
 
-type ShortsProps = {
+interface MediaBrowserProps {
   isSidebarExpanded: boolean;
-};
+}
 
-const videoList = [
-  "https://www.youtube.com/watch?v=JAnYzWpBhAw&list=RDJAnYzWpBhAw&start_radio=1",
-  "https://www.youtube.com/watch?v=JAnYzWpBhAw&list=RDJAnYzWpBhAw&start_radio=1",
-  // Add more YouTube Shorts links here...
-];
+const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-export const Shorts: React.FC<ShortsProps> = ({ isSidebarExpanded }) => {
-  const [videos, setVideos] = useState(videoList);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Function to load more videos when scrolling near the bottom
-  const handleScroll = () => {
-    if (containerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      if (scrollTop + clientHeight >= scrollHeight - 5) {
-        // Load more videos when scrolling near the bottom
-        setVideos((prevVideos) => [
-          ...prevVideos,
-          ...videoList, // Add more videos from the list to simulate infinite scroll
-        ]);
-      }
-    }
+  const handlePlay = (driveUrl: string) => {
+    navigate(`/player?url=${encodeURIComponent(driveUrl)}`);
   };
 
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.addEventListener("scroll", handleScroll);
-    }
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener("scroll", handleScroll);
-      }
-    };
-  }, []);
+  const renderMediaCard = (media: any, isEpisode = false) => (
+    <Card
+      sx={{
+        maxWidth: isMobile ? "100%" : 340,
+        m: 1,
+        transition: "transform 0.3s",
+        "&:hover": {
+          transform: "scale(1.03)",
+          boxShadow: theme.shadows[6],
+        },
+      }}
+    >
+      <Box sx={{ position: "relative" }}>
+        <CardMedia
+          component="img"
+          height={isEpisode ? 180 : 240}
+          image={media.thumbnail}
+          alt={media.title}
+        />
+        <IconButton
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            "&:hover": {
+              backgroundColor: "rgba(255,0,0,0.7)",
+            },
+          }}
+          onClick={() => handlePlay(media.drive_url)}
+        >
+          <PlayArrowIcon sx={{ fontSize: 50, color: "white" }} />
+        </IconButton>
+      </Box>
+      <CardContent>
+        <Typography gutterBottom variant="h6" component="div">
+          {media.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {media.description}
+        </Typography>
+        {!isEpisode && (
+          <Box sx={{ mt: 1 }}>
+            {media.genre?.map((g: string) => (
+              <Chip label={g} size="small" sx={{ mr: 0.5 }} key={g} />
+            ))}
+          </Box>
+        )}
+        {isEpisode && (
+          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+            Episode {media.episode_number} • {media.duration}
+          </Typography>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box
-      ref={containerRef}
       sx={{
-        marginLeft: isSidebarExpanded ? 30 : 10,
-        marginTop: 10,
+        marginLeft: isSidebarExpanded ? "240px" : "64px",
+        p: 3,
+        transition: theme.transitions.create("margin", {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.leavingScreen,
+        }),
       }}
-      px={4}
-      py={2}
     >
-      {/* Render YouTube Shorts */}
-      {videos.map((videoUrl, index) => (
-        <Box
-          key={index}
-          sx={{
-            marginBottom: 2,
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <iframe
-            width="40%"
-            height="800"
-            src={videoUrl}
-            title={`YouTube Shorts ${index}`}
-            frameBorder="0"
-            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{
-              borderRadius: "10px",
-            }}
-          ></iframe>
+      {/* Movies Section */}
+      <Typography variant="h4" sx={{ mb: 3, color: "white" }}>
+        Movies
+      </Typography>
+      <Grid container spacing={2}>
+        {driveData.movies.map((movie) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={movie.id}>
+            {renderMediaCard(movie)}
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Series Section */}
+      {driveData.series.map((series) => (
+        <Box key={series.id} sx={{ mt: 6 }}>
+          <Typography variant="h4" sx={{ mb: 3, color: "white" }}>
+            {series.title}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2, color: "text.secondary" }}>
+            {series.description}
+          </Typography>
+          <Grid container spacing={2}>
+            {series.episodes.map((episode) => (
+              <Grid
+                size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
+                key={episode.drive_url}
+              >
+                {renderMediaCard(episode, true)}
+              </Grid>
+            ))}
+          </Grid>
         </Box>
       ))}
     </Box>
   );
 };
+
+export default MediaBrowser;

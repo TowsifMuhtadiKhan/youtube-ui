@@ -5,10 +5,11 @@ import MainContent from "./components/MainContainer";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { Shorts } from "./components/Shorts";
+import MediaBrowser from "./components/Shorts";
 import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
 import { useMediaQuery } from "@mui/material";
+import { DrivePlayer } from "./components/DrivePlayer";
 
 const theme = createTheme({
   typography: {
@@ -79,7 +80,7 @@ const App: React.FC = () => {
           />
           <Route
             path="/shorts"
-            element={<Shorts isSidebarExpanded={isSidebarExpanded} />}
+            element={<MediaBrowser isSidebarExpanded={isSidebarExpanded} />}
           />
           <Route
             path="/subscriptions"
@@ -88,6 +89,10 @@ const App: React.FC = () => {
           <Route
             path="/video/:id"
             element={<VideoPage isSidebarExpanded={isSidebarExpanded} />}
+          />
+          <Route
+            path="/player"
+            element={<DrivePlayer isSidebarExpanded={isSidebarExpanded} />}
           />
           {/* Define other routes here */}
         </Routes>

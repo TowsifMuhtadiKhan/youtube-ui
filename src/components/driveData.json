@@ -1,0 +1,59 @@
+{
+  "series": [
+    {
+      "id": "series_1",
+      "title": "Awesome Web Series",
+      "description": "A thrilling web series about programming adventures",
+      "thumbnail": "https://example.com/thumbnails/series1.jpg",
+      "episodes": [
+        {
+          "episode_number": 1,
+          "title": "The Beginning",
+          "description": "Pilot episode where everything begins",
+          "duration": "24:30",
+          "drive_url": "https://drive.google.com/file/d/15seb0nVrEkdms8dMkZv7B-GTaN-joU8M/preview",
+          "thumbnail": "https://drive.google.com/thumbnail?id=15seb0nVrEkdms8dMkZv7B-GTaN-joU8M",
+          "upload_date": "2023-10-15"
+        },
+        {
+          "episode_number": 2,
+          "title": "The Plot Thickens",
+          "description": "Things start getting complicated",
+          "duration": "22:45",
+          "drive_url": "https://drive.google.com/file/d/ANOTHER_DRIVE_ID/preview",
+          "thumbnail": "https://drive.google.com/thumbnail?id=ANOTHER_DRIVE_ID",
+          "upload_date": "2023-10-22"
+        }
+      ]
+    },
+    {
+      "id": "series_2",
+      "title": "Tech Tutorials",
+      "description": "Learn modern web development",
+      "thumbnail": "https://example.com/thumbnails/series2.jpg",
+      "episodes": [
+        {
+          "episode_number": 1,
+          "title": "React Fundamentals",
+          "description": "Introduction to React.js",
+          "duration": "32:10",
+          "drive_url": "https://drive.google.com/file/d/THIRD_DRIVE_ID/preview",
+          "thumbnail": "https://drive.google.com/thumbnail?id=THIRD_DRIVE_ID",
+          "upload_date": "2023-11-01"
+        }
+      ]
+    }
+  ],
+  "movies": [
+    {
+      "id": "movie_1",
+      "title": "Chokkor 302 (2025)",
+      "description": "A chorki Drama",
+      "duration": "1:45:00",
+      "drive_url": "https://drive.google.com/file/d/15seb0nVrEkdms8dMkZv7B-GTaN-joU8M/preview",
+      "thumbnail": "https://drive.google.com/thumbnail?id=1fyEMpcsJUZcISXn3FhBVy_LTFDa0ttZp",
+      "upload_date": "2023-09-15",
+      "genre": ["Drama", "Tech"]
+    }
+  ]
+}

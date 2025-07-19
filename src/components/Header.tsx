@@ -109,15 +109,11 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           {/* Left Section - Logo & Menu */}
           <Box display="flex" alignItems="center" gap={1}>
-            {!isMobile && (
-              <IconButton
-                edge="start"
-                color="inherit"
-                onClick={onToggleSidebar}
-              >
-                <MenuIcon />
-              </IconButton>
-            )}
+            {/* {!isMobile && ( */}
+            <IconButton edge="start" color="inherit" onClick={onToggleSidebar}>
+              <MenuIcon />
+            </IconButton>
+            {/* )} */}
             <img
               src={Logo}
               alt="Logo"
