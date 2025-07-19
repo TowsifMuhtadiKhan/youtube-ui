@@ -2,90 +2,26 @@ import React from "react";
 import { Box, Typography, Grid } from "@mui/material";
 import SlowMotionVideoIcon from "@mui/icons-material/SlowMotionVideo";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { useNavigate } from "react-router-dom";
+import videoData from "./data.json";
 
 // Sample data imported from JSON or passed as a prop
-const videoData = [
-  {
-    id: "0BGmejDU5s",
-    title:
-      "Shaamat - Lofi (Slowed + Reverb) | Ankit Tiwari, Tara Sutaria | SR Lofi",
-    link: "https://www.youtube.com/watch?v=_0BGmejDU5s&list=RD_0BGmejDU5s&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/_0BGmejDU5s/hqdefault.jpg",
-    subTitle: "Lofi Music",
-  },
-  {
-    id: "RKTBa40J4Qw",
-    title: "Galliyan Returns - Lofi (Slowed + Reverb) | Ankit Tiwari | SR Lofi",
-    link: "https://www.youtube.com/watch?v=RKTBa40J4Qw&list=RD_0BGmejDU5s&index=6",
-    thumbnail: "https://img.youtube.com/vi/RKTBa40J4Qw/hqdefault.jpg",
-    subTitle: "Lofi Music",
-  },
-  {
-    id: "EWIay_vyFMk",
-    title:
-      "Khwaab Music Video I ‪@faheemabdullahworld‬ ‪@phomusic‬ I ‪@MureenShahmiri‬ I Riva Arora",
-    link: "https://www.youtube.com/watch?v=EWIay_vyFMk&list=RDEWIay_vyFMk&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/EWIay_vyFMk/hqdefault.jpg",
-    subTitle: "Khwaab Music Video",
-  },
-  {
-    id: "MEBU71lR7b8",
-    title: "Aaj Bhi (Slowed + Reverb) | Vishal Mishra | SR Lofi",
-    link: "https://www.youtube.com/watch?v=MEBU71lR7b8&list=RDMEBU71lR7b8&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/MEBU71lR7b8/hqdefault.jpg",
-    subTitle: "Aaj Bhi - Lofi",
-  },
-  {
-    id: "JAnYzWpBhAw",
-    title:
-      "E Kon Maya | এ কোন মায়া | Shamiul Shezan | Lofi | New Bangla Song 2025 | Official Lyric Video",
-    link: "https://www.youtube.com/watch?v=JAnYzWpBhAw&list=RDJAnYzWpBhAw&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/JAnYzWpBhAw/hqdefault.jpg",
-    subTitle: "E Kon Maya - Lofi",
-  },
-  {
-    id: "RKTBa40J4Qw",
-    title: "Galliyan Returns - Lofi (Slowed + Reverb) | Ankit Tiwari | SR Lofi",
-    link: "https://www.youtube.com/watch?v=RKTBa40J4Qw&list=RD_0BGmejDU5s&index=6",
-    thumbnail: "https://img.youtube.com/vi/RKTBa40J4Qw/hqdefault.jpg",
-    subTitle: "Lofi Music",
-  },
-  {
-    id: "EWIay_vyFMk",
-    title:
-      "Khwaab Music Video I ‪@faheemabdullahworld‬ ‪@phomusic‬ I ‪@MureenShahmiri‬ I Riva Arora",
-    link: "https://www.youtube.com/watch?v=EWIay_vyFMk&list=RDEWIay_vyFMk&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/EWIay_vyFMk/hqdefault.jpg",
-    subTitle: "Khwaab Music Video",
-  },
-  {
-    id: "MEBU71lR7b8",
-    title: "Aaj Bhi (Slowed + Reverb) | Vishal Mishra | SR Lofi",
-    link: "https://www.youtube.com/watch?v=MEBU71lR7b8&list=RDMEBU71lR7b8&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/MEBU71lR7b8/hqdefault.jpg",
-    subTitle: "Aaj Bhi - Lofi",
-  },
-  {
-    id: "JAnYzWpBhAw",
-    title:
-      "E Kon Maya | এ কোন মায়া | Shamiul Shezan | Lofi | New Bangla Song 2025 | Official Lyric Video",
-    link: "https://www.youtube.com/watch?v=JAnYzWpBhAw&list=RDJAnYzWpBhAw&start_radio=1",
-    thumbnail: "https://img.youtube.com/vi/JAnYzWpBhAw/hqdefault.jpg",
-    subTitle: "E Kon Maya - Lofi",
-  },
-];
 
 interface MainContentProps {
   isSidebarExpanded: boolean;
 }
 
 const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
+  const navigate = useNavigate();
+  const handleVideoClick = (videoId: string) => {
+    navigate(`/video/${videoId}`);
+  };
+
   return (
     <Box
       sx={{
         marginLeft: isSidebarExpanded ? 30 : 10,
         marginTop: 10,
-
         overflowY: "auto",
       }}
       px={4}
@@ -111,7 +47,7 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
                   cursor: "pointer",
                   transition: "transform 0.3s ease-in-out",
                 }}
-                onClick={() => window.open(video.link, "_blank")}
+                onClick={() => handleVideoClick(video.id)}
                 onMouseOver={(e) =>
                   (e.currentTarget.style.transform = "scale(1.02)")
                 }

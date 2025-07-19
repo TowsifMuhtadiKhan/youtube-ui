@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Shorts } from "./components/Shorts";
 import { Subscription } from "./components/Subscription";
+import VideoPage from "./components/VideoPage";
 
 const theme = createTheme({
   typography: {
@@ -77,6 +78,10 @@ const App: React.FC = () => {
           <Route
             path="/subscriptions"
             element={<Subscription isSidebarExpanded={isSidebarExpanded} />}
+          />
+          <Route
+            path="/video/:id"
+            element={<VideoPage isSidebarExpanded={isSidebarExpanded} />}
           />
           {/* Define other routes here */}
         </Routes>
