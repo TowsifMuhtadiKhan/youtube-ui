@@ -1,10 +1,12 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Grid, IconButton, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import videoData from "./data.json";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
 import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
+import { Switch, FormControlLabel } from "@mui/material";
+
 interface VideoPageProps {
   isSidebarExpanded: boolean;
 }
@@ -14,36 +16,76 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const navigate = useNavigate();
 
-  // YouTube embed URL with strict parameters
   const videoEmbedUrl = `https://www.youtube.com/embed/${id}?rel=0&autoplay=1&enablejsapi=1`;
 
-  // Find the video based on the current ID
   const selectedVideo = videoData.find((video) => video.id === id);
 
-  // If the video ID is not found, show an error message
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+
   if (!selectedVideo) {
     return <Box sx={{ color: "white", padding: 4 }}>Video not found</Box>;
   }
   const videoIndex = videoData.findIndex((video) => video.id === id);
 
-  // Handle Previous Video
   const handlePrevious = () => {
     if (videoIndex > 0) {
       navigate(`/video/${videoData[videoIndex - 1].id}`);
     }
   };
 
-  // Handle Next Video
   const handleNext = () => {
     if (videoIndex < videoData.length - 1) {
       navigate(`/video/${videoData[videoIndex + 1].id}`);
     }
   };
-  // Force-hide YouTube suggestions using CSS overlay
 
   const handleVideoClick = (videoId: string) => {
     navigate(`/video/${videoId}`);
   };
+
+  useEffect(() => {
+    if (!autoPlayEnabled) return;
+    const onPlayerReady = (event: any) => {
+      event.target.playVideo();
+    };
+
+    const onPlayerStateChange = (event: any) => {
+      if (event.data === 0) {
+        handleNext();
+      }
+    };
+
+    if (!(window as any).YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+
+    (window as any).onYouTubeIframeAPIReady = () => {
+      new (window as any).YT.Player(iframeRef.current, {
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    };
+
+    if ((window as any).YT && (window as any).YT.Player) {
+      new (window as any).YT.Player(iframeRef.current, {
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    }
+
+    return () => {
+      if ((window as any).onYouTubeIframeAPIReady) {
+        delete (window as any).onYouTubeIframeAPIReady;
+      }
+    };
+  }, [id, handleNext]);
 
   return (
     <Box
@@ -77,6 +119,43 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end", // This will push content to the right
+              }}
+            >
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={autoPlayEnabled}
+                    onChange={() => setAutoPlayEnabled(!autoPlayEnabled)}
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": {
+                        color: "#ff0000", // Red color when checked
+                        "&:hover": {
+                          backgroundColor: "rgba(255, 0, 0, 0.08)",
+                        },
+                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                        {
+                          backgroundColor: "#ff0000", // Red track when checked
+                        },
+                    }}
+                  />
+                }
+                label="Autoplay"
+                labelPlacement="start"
+                sx={{
+                  color: "#fff",
+                  marginLeft: 1,
+                  marginRight: 1,
+                  "& .MuiFormControlLabel-label": {
+                    fontSize: "0.875rem",
+                  },
+                }}
+              />
+            </Box>
             <Typography
               sx={{
                 color: "#fff",
