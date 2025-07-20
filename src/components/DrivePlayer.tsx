@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -6,9 +6,12 @@ import {
   useMediaQuery,
   Chip,
   Skeleton,
+  IconButton,
 } from "@mui/material";
 import { useLocation } from "react-router-dom";
 import driveData from "./driveData.json";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 
 interface DrivePlayerProps {
   isSidebarExpanded: boolean;
@@ -47,10 +50,11 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
   const params = new URLSearchParams(location.search);
   const driveUrl = params.get("url") || "";
 
-  const [currentVideo, setCurrentVideo] = React.useState<CurrentVideo>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [currentVideo, setCurrentVideo] = useState<CurrentVideo>(null);
+  const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const findCurrentVideo = (): CurrentVideo => {
       // Check movies
       for (const movie of driveData.movies) {
@@ -67,7 +71,7 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
         for (const episode of series.episodes) {
           if (episode.drive_url === driveUrl) {
             return {
-              id: `${series.id}_ep${episode.episode_number}`, // Add fallback ID if needed
+              id: `${series.id}_ep${episode.episode_number}`,
               title: episode.title,
               description: episode.description,
               duration: episode.duration,
@@ -91,11 +95,15 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
     setLoading(false);
   }, [driveUrl]);
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
   if (!driveUrl) {
     return (
       <Box
         sx={{
-          marginLeft: isSidebarExpanded ? "240px" : "64px",
+          marginLeft: isFullscreen ? 0 : isSidebarExpanded ? "240px" : "64px",
           padding: 3,
           backgroundColor: "#000",
           minHeight: "100vh",
@@ -113,12 +121,18 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
   return (
     <Box
       sx={{
-        marginLeft: isSidebarExpanded ? "240px" : "64px",
-        padding: 3,
+        marginLeft: isFullscreen ? 0 : isSidebarExpanded ? "240px" : "64px",
+        padding: isFullscreen ? 0 : 3,
         backgroundColor: "#000",
         minHeight: "100vh",
-        marginTop: isMobile ? "56px" : "64px",
+        marginTop: isFullscreen ? 0 : isMobile ? "56px" : "64px",
         color: "white",
+        position: isFullscreen ? "fixed" : "relative",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: isFullscreen ? 1500 : "auto",
       }}
     >
       <Box
@@ -126,8 +140,9 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
           display: "flex",
           flexDirection: "column",
           gap: 3,
-          maxWidth: isMobile ? "100%" : "1200px",
+          maxWidth: isFullscreen ? "100%" : isMobile ? "100%" : "1200px",
           margin: "0 auto",
+          height: isFullscreen ? "100%" : "auto",
         }}
       >
         {loading ? (
@@ -137,12 +152,28 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
         <Box
           sx={{
             position: "relative",
-            paddingTop: "56.25%", // 16:9 aspect ratio
-            borderRadius: "8px",
+            paddingTop: isFullscreen ? "100vh" : "56.25%", // Full height in fullscreen mode
+            borderRadius: isFullscreen ? 0 : "8px",
             overflow: "hidden",
             backgroundColor: "#111",
           }}
         >
+          {isMobile && (
+            <IconButton
+              onClick={toggleFullscreen}
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                zIndex: 100,
+                backgroundColor: "rgba(0,0,0,0.5)",
+                color: "white",
+              }}
+            >
+              {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+            </IconButton>
+          )}
+
           <iframe
             src={driveUrl}
             style={{
@@ -159,55 +190,61 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
           />
         </Box>
 
-        {loading ? (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Skeleton variant="text" width="60%" height={30} />
-            <Skeleton variant="text" width="100%" height={80} />
-            <Skeleton variant="text" width="40%" height={20} />
-          </Box>
-        ) : currentVideo ? (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {currentVideo.type === "episode" && (
-              <Typography variant="h6">
-                {currentVideo.seriesTitle} • Episode{" "}
-                {currentVideo.episode_number}
+        {!isFullscreen && (
+          <>
+            {loading ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <Skeleton variant="text" width="60%" height={30} />
+                <Skeleton variant="text" width="100%" height={80} />
+                <Skeleton variant="text" width="40%" height={20} />
+              </Box>
+            ) : currentVideo ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {currentVideo.type === "episode" && (
+                  <Typography variant="h6">
+                    {currentVideo.seriesTitle} • Episode{" "}
+                    {currentVideo.episode_number}
+                  </Typography>
+                )}
+                <Typography fontSize={"20px"} fontWeight={700}>
+                  {currentVideo?.title || "Video Player"}
+                </Typography>
+
+                <Typography variant="body1">
+                  {currentVideo.description}
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {currentVideo.type === "movie" && currentVideo.genre && (
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      {currentVideo.genre.map((g) => (
+                        <Chip
+                          key={g}
+                          label={g}
+                          size="small"
+                          sx={{
+                            backgroundColor: theme.palette.primary.main,
+                            color: "white",
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            ) : (
+              <Typography variant="body1">
+                Video information not available
               </Typography>
             )}
-            <Typography fontSize={"20px"} fontWeight={700}>
-              {currentVideo?.title || "Video Player"}
-            </Typography>
-
-            <Typography variant="body1">{currentVideo.description}</Typography>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              {currentVideo.type === "movie" && currentVideo.genre && (
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  {currentVideo.genre.map((g) => (
-                    <Chip
-                      key={g}
-                      label={g}
-                      size="small"
-                      sx={{
-                        backgroundColor: theme.palette.primary.main,
-                        color: "white",
-                      }}
-                    />
-                  ))}
-                </Box>
-              )}
-            </Box>
-          </Box>
-        ) : (
-          <Typography variant="body1">
-            Video information not available
-          </Typography>
+          </>
         )}
       </Box>
     </Box>
