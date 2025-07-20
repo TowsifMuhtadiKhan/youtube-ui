@@ -26,6 +26,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useNavigate } from "react-router-dom";
 import videoData from "./data.json";
 import seriesMoviesData from "./driveData.json";
+import { useAuth } from "./Auth/AuthContext";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -69,6 +73,23 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const auth = useAuth();
+  const open = Boolean(anchorEl);
+
+  const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    auth.logout();
+    handleClose();
+    navigate("/login");
+  };
 
   const handleSearch = (query: string) => {
     if (query.trim() === "") {
@@ -361,7 +382,51 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                 />
               </IconButton>
             )}
-            <Avatar sx={{ width: 32, height: 32 }}>T</Avatar>
+            <IconButton onClick={handleAvatarClick}>
+              <Avatar sx={{ width: 32, height: 32 }}>T</Avatar>
+            </IconButton>
+
+            <Menu
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleClose}
+              onClick={handleClose}
+              PaperProps={{
+                elevation: 0,
+                sx: {
+                  overflow: "visible",
+                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                  mt: 1.5,
+                  "& .MuiAvatar-root": {
+                    width: 32,
+                    height: 32,
+                    ml: -0.5,
+                    mr: 1,
+                  },
+                  "&:before": {
+                    content: '""',
+                    display: "block",
+                    position: "absolute",
+                    top: 0,
+                    right: 14,
+                    width: 10,
+                    height: 10,
+                    bgcolor: "background.paper",
+                    transform: "translateY(-50%) rotate(45deg)",
+                    zIndex: 0,
+                  },
+                  backgroundColor: "#282828",
+                  color: "white",
+                },
+              }}
+              transformOrigin={{ horizontal: "right", vertical: "top" }}
+              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+            >
+              <MenuItem onClick={handleLogout} sx={{ color: "white" }}>
+                <LogoutIcon sx={{ mr: 1 }} />
+                Logout
+              </MenuItem>
+            </Menu>
           </Box>
         </Box>
       </Toolbar>

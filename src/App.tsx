@@ -1,15 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type JSX } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Siderbar";
 import MainContent from "./components/MainContainer";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import MediaBrowser from "./components/Shorts";
 import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
 import { useMediaQuery } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
+import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
+import Login from "./components/Auth/Login";
+import CircularProgress from "@mui/material/CircularProgress";
+import Box from "@mui/material/Box";
 
 const theme = createTheme({
   typography: {
@@ -50,9 +59,45 @@ const theme = createTheme({
   },
 });
 
-const App: React.FC = () => {
+const LoadingScreen = () => (
+  <Box
+    display="flex"
+    justifyContent="center"
+    alignItems="center"
+    minHeight="100vh"
+    bgcolor="#0F0F0F"
+  >
+    <CircularProgress color="primary" />
+  </Box>
+);
+
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const auth = useAuth();
+  const location = useLocation();
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    // Check if auth state has been initialized
+    if (auth.isAuthenticated !== undefined) {
+      setIsInitialized(true);
+    }
+  }, [auth.isAuthenticated]);
+
+  if (!isInitialized) {
+    return <LoadingScreen />;
+  }
+
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+const AppContent = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [isSidebarExpanded, setSidebarExpanded] = useState(!isMobile);
+  const location = useLocation();
 
   const handleToggleSidebar = () => {
     setSidebarExpanded((prevState) => !prevState);
@@ -62,40 +107,74 @@ const App: React.FC = () => {
     setSidebarExpanded(!isMobile);
   }, [isMobile]);
 
+  const isLoginPage = location.pathname === "/login";
+
+  return (
+    <>
+      {!isLoginPage && <Header onToggleSidebar={handleToggleSidebar} />}
+      {!isLoginPage && <Sidebar isSidebarExpanded={isSidebarExpanded} />}
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <MainContent isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <MainContent isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shorts"
+          element={
+            <ProtectedRoute>
+              <MediaBrowser isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/subscriptions"
+          element={
+            <ProtectedRoute>
+              <Subscription isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/video/:id"
+          element={
+            <ProtectedRoute>
+              <VideoPage isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/player"
+          element={
+            <ProtectedRoute>
+              <DrivePlayer isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </>
+  );
+};
+
+const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <Router>
-        {" "}
-        {/* Add this wrapper */}
-        <Header onToggleSidebar={handleToggleSidebar} />
-        <Sidebar isSidebarExpanded={isSidebarExpanded} />
-        <Routes>
-          <Route
-            path="/"
-            element={<MainContent isSidebarExpanded={isSidebarExpanded} />}
-          />
-          <Route
-            path="/home"
-            element={<MainContent isSidebarExpanded={isSidebarExpanded} />}
-          />
-          <Route
-            path="/shorts"
-            element={<MediaBrowser isSidebarExpanded={isSidebarExpanded} />}
-          />
-          <Route
-            path="/subscriptions"
-            element={<Subscription isSidebarExpanded={isSidebarExpanded} />}
-          />
-          <Route
-            path="/video/:id"
-            element={<VideoPage isSidebarExpanded={isSidebarExpanded} />}
-          />
-          <Route
-            path="/player"
-            element={<DrivePlayer isSidebarExpanded={isSidebarExpanded} />}
-          />
-          {/* Define other routes here */}
-        </Routes>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </Router>
     </ThemeProvider>
   );
