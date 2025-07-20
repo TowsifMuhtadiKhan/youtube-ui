@@ -114,6 +114,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
     },
   ];
 
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
   const renderSection = (
     sections: Array<{ icon: JSX.Element; label: string; path: string }>
   ) => {
@@ -123,6 +127,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
         sx={{
           display: "flex",
           alignItems: "center",
+          backgroundColor: isActive(section.path) ? "#333" : "transparent",
+          borderRadius: isActive(section.path) ? "10px" : "0px",
           marginBottom: 1,
           "&:hover": {
             backgroundColor: "#333", // Change to gray color on hover
@@ -132,9 +138,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
         onClick={() => navigate(section.path)} // Use navigate on click
         style={{ cursor: "pointer" }} // Add pointer cursor to indicate it's clickable
       >
-        <IconButton>{section.icon}</IconButton>
+        <IconButton>
+          {" "}
+          {React.cloneElement(section.icon, {
+            sx: {
+              fontSize: "25px",
+              color: isActive(section.path) ? "#d6d6d6" : "white",
+            },
+          })}
+        </IconButton>
         {isSidebarExpanded && (
-          <Typography fontWeight={500} sx={{ marginLeft: 2 }}>
+          <Typography
+            fontWeight={500}
+            sx={{
+              marginLeft: 2,
+              color: isActive(section.path) ? "#d6d6d6" : "white",
+            }}
+          >
             {section.label}
           </Typography>
         )}

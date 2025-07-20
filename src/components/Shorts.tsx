@@ -8,7 +8,6 @@ import {
   Card,
   CardMedia,
   CardContent,
-  Chip,
   IconButton,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -38,14 +37,19 @@ const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
           transform: "scale(1.03)",
           boxShadow: theme.shadows[6],
         },
+        backgroundColor: "#1A1A1A",
+        color: "white",
+        border: "none",
+        boxShadow: "none",
       }}
     >
       <Box sx={{ position: "relative" }}>
         <CardMedia
           component="img"
-          height={isEpisode ? 180 : 240}
+          height={isEpisode ? 180 : 440}
           image={media.thumbnail}
           alt={media.title}
+          sx={{ borderRadius: 1 }}
         />
         <IconButton
           sx={{
@@ -63,24 +67,24 @@ const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
           <PlayArrowIcon sx={{ fontSize: 50, color: "white" }} />
         </IconButton>
       </Box>
-      <CardContent>
-        <Typography gutterBottom variant="h6" component="div">
+      <CardContent sx={{ px: 2, py: 1 }}>
+        <Typography mt={1} fontWeight={700} fontSize={"16px"}>
           {media.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {media.description}
-        </Typography>
         {!isEpisode && (
-          <Box sx={{ mt: 1 }}>
-            {media.genre?.map((g: string) => (
-              <Chip label={g} size="small" sx={{ mr: 0.5 }} key={g} />
-            ))}
-          </Box>
+          <Typography mt={1} fontSize={"14px"} color="#D6D6D6">
+            {media.description}
+          </Typography>
         )}
         {isEpisode && (
-          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-            Episode {media.episode_number} • {media.duration}
-          </Typography>
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              {media.description}
+            </Typography>
+            <Typography variant="caption" display="block">
+              Episode {media.episode_number} • {media.duration}
+            </Typography>
+          </>
         )}
       </CardContent>
     </Card>
@@ -96,9 +100,11 @@ const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
           duration: theme.transitions.duration.leavingScreen,
         }),
       }}
+      mt={10}
+      bgcolor="#000"
     >
       {/* Movies Section */}
-      <Typography variant="h4" sx={{ mb: 3, color: "white" }}>
+      <Typography mb={3} fontWeight={700} fontSize={"20px"}>
         Movies
       </Typography>
       <Grid container spacing={2}>
@@ -110,7 +116,7 @@ const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
       </Grid>
 
       {/* Series Section */}
-      {driveData.series.map((series) => (
+      {driveData?.series.map((series) => (
         <Box key={series.id} sx={{ mt: 6 }}>
           <Typography variant="h4" sx={{ mb: 3, color: "white" }}>
             {series.title}

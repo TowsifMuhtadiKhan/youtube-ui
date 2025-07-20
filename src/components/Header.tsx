@@ -22,13 +22,24 @@ import { Menu as MenuIcon } from "@mui/icons-material";
 import Logo from "../assets/youtube-svgrepo-com.svg";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import AddIcon from "@mui/icons-material/Add";
-import KeyboardVoiceIcon from "@mui/icons-material/KeyboardVoice";
 import SearchIcon from "@mui/icons-material/Search";
 import { useNavigate } from "react-router-dom";
 import videoData from "./data.json";
+import seriesMoviesData from "./driveData.json";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
+  subTitle?: string;
+  description?: string;
+  thumbnail: string;
+  type: "video" | "series" | "movie" | "episode";
+  episode_number?: number;
+  series_id?: string;
 }
 
 const SuggestionPaper = styled(Paper)(({ theme }) => ({
@@ -52,7 +63,7 @@ const SuggestionItem = styled(ListItemButton)(({}) => ({
 
 const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const navigate = useNavigate();
   const theme = useTheme();
@@ -65,16 +76,91 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       return;
     }
 
-    const filtered = videoData.filter(
-      (video) =>
-        video.title.toLowerCase().includes(query.toLowerCase()) ||
-        video.subTitle.toLowerCase().includes(query.toLowerCase())
-    );
-    setSuggestions(filtered);
+    const lowerQuery = query.toLowerCase();
+
+    // Search in video data
+    const videoResults: SearchResult[] = videoData
+      .filter(
+        (video) =>
+          video.title.toLowerCase().includes(lowerQuery) ||
+          (video.subTitle && video.subTitle.toLowerCase().includes(lowerQuery))
+      )
+      .map((video) => ({
+        id: video.id,
+        title: video.title,
+        subTitle: video.subTitle,
+        thumbnail: video.thumbnail,
+        type: "video",
+      }));
+
+    // Search in series data
+    const seriesResults: SearchResult[] = seriesMoviesData.series
+      .filter(
+        (series) =>
+          series.title.toLowerCase().includes(lowerQuery) ||
+          series.description.toLowerCase().includes(lowerQuery)
+      )
+      .flatMap((series) => [
+        {
+          id: series.id,
+          title: series.title,
+          description: series.description,
+          thumbnail: series.thumbnail,
+          type: "series" as const, // Explicitly set the type
+        },
+        ...series.episodes
+          .filter(
+            (episode) =>
+              episode.title.toLowerCase().includes(lowerQuery) ||
+              episode.description.toLowerCase().includes(lowerQuery)
+          )
+          .map((episode) => ({
+            id: `${series.id}_${episode.episode_number}`,
+            title: `${series.title} - Episode ${episode.episode_number}: ${episode.title}`,
+            description: episode.description,
+            thumbnail: episode.thumbnail,
+            type: "episode" as const, // Explicitly set the type
+            episode_number: episode.episode_number,
+            series_id: series.id,
+          })),
+      ]);
+
+    // Search in movies data
+    const movieResults: SearchResult[] = seriesMoviesData.movies
+      .filter(
+        (movie) =>
+          movie.title.toLowerCase().includes(lowerQuery) ||
+          movie.description.toLowerCase().includes(lowerQuery)
+      )
+      .map((movie) => ({
+        id: movie.id,
+        title: movie.title,
+        description: movie.description,
+        thumbnail: movie.thumbnail,
+        type: "movie",
+      }));
+
+    const allResults = [...videoResults, ...seriesResults, ...movieResults];
+    setSuggestions(allResults);
   };
 
-  const handleSuggestionClick = (videoId: string) => {
-    navigate(`/video/${videoId}`);
+  const handleSuggestionClick = (item: SearchResult) => {
+    switch (item.type) {
+      case "video":
+        navigate(`/video/${item.id}`);
+        break;
+      case "series":
+        navigate(`/series/${item.id}`);
+        break;
+      case "movie":
+        navigate(`/movie/${item.id}`);
+        break;
+      case "episode":
+        if (item.series_id) {
+          navigate(`/series/${item.series_id}/episode/${item.episode_number}`);
+        }
+        break;
+    }
     setSearchQuery("");
     setSuggestions([]);
     setShowSuggestions(false);
@@ -83,9 +169,23 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && searchQuery.trim() !== "") {
       if (suggestions.length > 0) {
-        handleSuggestionClick(suggestions[0].id);
+        handleSuggestionClick(suggestions[0]);
       }
     }
+  };
+
+  const truncateText = (text: string, maxLength: number): string => {
+    if (!text) return "";
+    return text.length > maxLength
+      ? `${text.substring(0, maxLength)}...`
+      : text;
+  };
+
+  // Updated getSubtitle function
+  const getSubtitle = (item: SearchResult) => {
+    if (item.subTitle) return truncateText(item.subTitle, 50);
+    if (item.description) return truncateText(item.description, 50);
+    return "";
   };
 
   return (
@@ -109,11 +209,9 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           {/* Left Section - Logo & Menu */}
           <Box display="flex" alignItems="center" gap={1}>
-            {/* {!isMobile && ( */}
             <IconButton edge="start" color="inherit" onClick={onToggleSidebar}>
               <MenuIcon />
             </IconButton>
-            {/* )} */}
             <img
               src={Logo}
               alt="Logo"
@@ -125,7 +223,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                 fontSize={isTablet ? "18px" : "20px"}
                 fontWeight="bold"
               >
-                YouTube
+                TomTube
               </Typography>
             )}
           </Box>
@@ -191,34 +289,20 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               </IconButton>
             </Box>
 
-            {/* Only show voice icon on larger screens */}
-            {!isMobile && (
-              <IconButton
-                sx={{
-                  backgroundColor: "#3F3F3F",
-                  "&:hover": { backgroundColor: "#5F5F5F" },
-                  borderRadius: "50%",
-                  padding: "8px",
-                }}
-              >
-                <KeyboardVoiceIcon sx={{ fontSize: "20px", color: "white" }} />
-              </IconButton>
-            )}
-
             {/* Search Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
               <SuggestionPaper>
                 <List dense>
-                  {suggestions.map((video) => (
-                    <ListItem key={video.id} disablePadding>
+                  {suggestions.map((item) => (
+                    <ListItem key={item.id} disablePadding>
                       <SuggestionItem
-                        onClick={() => handleSuggestionClick(video.id)}
+                        onClick={() => handleSuggestionClick(item)}
                       >
                         <ListItemAvatar>
                           <Box
                             component="img"
-                            src={video.thumbnail}
-                            alt={video.title}
+                            src={item.thumbnail}
+                            alt={item.title}
                             sx={{
                               width: 40,
                               height: 40,
@@ -228,8 +312,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                           />
                         </ListItemAvatar>
                         <ListItemText
-                          primary={video.title}
-                          secondary={video.subTitle}
+                          primary={truncateText(item.title, 30)}
+                          secondary={getSubtitle(item)}
                           primaryTypographyProps={{
                             sx: { color: "#fff" },
                           }}
