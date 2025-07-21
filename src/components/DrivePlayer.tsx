@@ -118,6 +118,40 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
     );
   }
 
+  const playerContainerRef = React.useRef<HTMLDivElement>(null);
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  const handlePlayerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!playerContainerRef.current || !iframeRef.current) return;
+
+    // Get the position and dimensions of the player container
+    const rect = playerContainerRef.current.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const containerWidth = rect.width;
+
+    // Determine if click was on left or right half
+    const isLeftClick = clickPosition < containerWidth / 2;
+
+    try {
+      // Access the iframe's contentWindow to send messages
+      const iframeWindow = iframeRef.current.contentWindow;
+
+      if (iframeWindow) {
+        // Send a message to the iframe to seek forward or backward
+        // Note: This assumes the iframe content is set up to handle these messages
+        iframeWindow.postMessage(
+          {
+            type: "seek",
+            seconds: isLeftClick ? -10 : 10,
+          },
+          "*"
+        );
+      }
+    } catch (error) {
+      console.error("Error communicating with iframe:", error);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -173,21 +207,23 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({
               {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
             </IconButton>
           )}
-
-          <iframe
-            src={driveUrl}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              border: "none",
-            }}
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            title="Video Player"
-          />
+          <Box ref={playerContainerRef} onClick={handlePlayerClick}>
+            <iframe
+              ref={iframeRef}
+              src={driveUrl}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                border: "none",
+              }}
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              title="Video Player"
+            />
+          </Box>
         </Box>
 
         {!isFullscreen && (

@@ -132,7 +132,7 @@ const AppContent = () => {
           }
         />
         <Route
-          path="/shorts"
+          path="/movies"
           element={
             <ProtectedRoute>
               <MediaBrowser isSidebarExpanded={isSidebarExpanded} />
@@ -156,7 +156,7 @@ const AppContent = () => {
           }
         />
         <Route
-          path="/player"
+          path="/movies/player"
           element={
             <ProtectedRoute>
               <DrivePlayer isSidebarExpanded={isSidebarExpanded} />

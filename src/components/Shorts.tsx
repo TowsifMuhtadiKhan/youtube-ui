@@ -24,7 +24,7 @@ const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handlePlay = (driveUrl: string) => {
-    navigate(`/player?url=${encodeURIComponent(driveUrl)}`);
+    navigate(`/movies/player?url=${encodeURIComponent(driveUrl)}`);
   };
 
   const renderMediaCard = (media: any, isEpisode = false) => (

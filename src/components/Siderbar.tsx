@@ -45,8 +45,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
     },
     {
       icon: <VideoLibraryIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Shorts",
-      path: "/shorts",
+      label: "Movies",
+      path: "/movies",
     },
     {
       icon: <SubscriptionsIcon sx={{ fontSize: "25px", color: "white" }} />,
