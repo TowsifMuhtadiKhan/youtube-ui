@@ -64,6 +64,16 @@
       "thumbnail": "https://drive.google.com/thumbnail?id=1qRDh4zA3giSC_qln-52Zg1q24xpK2WSb",
       "upload_date": "2025-07-25",
       "genre": ["Drama", "Thriller"]
+    },
+    {
+      "id": "movie_2",
+      "title": "Sarzameen (2025)",
+      "description": "A new movie",
+      "duration": "1:30:00",
+      "drive_url": "https://drive.google.com/file/d/1U36I7MrwjQv_Gus9BOgI19Zgm6znj60q/preview",
+      "thumbnail": "https://drive.google.com/thumbnail?id=10QDAFqxL6Mfxxnhxc4skxGDcq1G22EwE",
+      "upload_date": "2025-07-25",
+      "genre": ["Drama", "Thriller"]
     }
   ]
 }
