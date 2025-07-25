@@ -54,6 +54,16 @@
       "thumbnail": "https://drive.google.com/thumbnail?id=1fyEMpcsJUZcISXn3FhBVy_LTFDa0ttZp",
       "upload_date": "2023-09-15",
       "genre": ["Drama", "Chorki"]
+    },
+    {
+      "id": "movie_2",
+      "title": "Saiyara (2025)",
+      "description": "A new movie",
+      "duration": "1:30:00",
+      "drive_url": "https://drive.google.com/file/d/1KZry5Jylr1TroJ89vj9By4m-t66maUFP/preview",
+      "thumbnail": "https://drive.google.com/thumbnail?id=1qRDh4zA3giSC_qln-52Zg1q24xpK2WSb",
+      "upload_date": "2025-07-25",
+      "genre": ["Drama", "Thriller"]
     }
   ]
 }
