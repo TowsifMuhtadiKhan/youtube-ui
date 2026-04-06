@@ -12,6 +12,7 @@ import {
   FormControlLabel,
   Avatar,
 } from "@mui/material";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { useNavigate, useParams } from "react-router-dom";
 import videoData from "./data.json";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
@@ -37,8 +38,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isDark = theme.palette.mode === "dark";
 
   const sidebarWidth = isMobile ? 0 : isSidebarExpanded ? 232 : 72;
@@ -62,44 +62,78 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const [isRotated, setIsRotated] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     if (!playerContainerRef.current) return;
-    if (!document.fullscreenElement) {
-      playerContainerRef.current.requestFullscreen();
+
+    if (!isFullscreen) {
+      // 1. Try Browser Fullscreen
+      try {
+        await playerContainerRef.current.requestFullscreen();
+      } catch (err) {
+        console.warn("Native fullscreen denied, using hybrid fallback.");
+      }
+
+      // 2. Always set our state (triggers our CSS "Fake" fullscreen fallback)
+      setIsFullscreen(true);
+
+      // 3. Try Orientation Lock
+      if (isMobile) {
+        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch {
+          try { await (screen.orientation as any).lock("landscape"); } catch { /* ignore */ }
+        }
+      }
     } else {
-      document.exitFullscreen();
+      // Exit everything
+      if (document.fullscreenElement) {
+        try { await document.exitFullscreen(); } catch { /* ignore */ }
+      }
+      setIsFullscreen(false);
+      setIsRotated(false);
+
+      if (isMobile) {
+        try { await ScreenOrientation.unlock(); } catch {
+          try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
+        }
+      }
     }
   };
 
   useEffect(() => {
     const handler = () => {
-      const active = !!document.fullscreenElement;
-      setIsFullscreen(active);
-      // Auto-landscape on mobile when fullscreen is active
-      if (isMobile) {
-        if (active) {
-          try { (screen.orientation as any).lock("landscape"); } catch { /* ignore */ }
-        } else {
-          try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
-          setIsRotated(false);
-        }
+      // Sync our state if they exit via system/escape
+      if (!document.fullscreenElement && isFullscreen) {
+        // If we are in "fake" fullscreen and not "real", don't auto-exit unless they hit our UI
       }
     };
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
-  }, [isMobile]);
+  }, [isFullscreen]);
 
   // Mobile: fullscreen + rotate 90° for landscape viewing
   const toggleRotate = async () => {
     if (!playerContainerRef.current) return;
 
-    if (!document.fullscreenElement) {
-      await playerContainerRef.current.requestFullscreen();
-      // Our existing useEffect[isMobile, active] will detect this and lock landscape
-      setIsRotated(true);
+    if (!isRotated) {
+      // Force Fullscreen first
+      if (!isFullscreen) await toggleFullscreen();
+
+      // Force logic for rotation
+      if (isMobile) {
+        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch {
+          try { await (screen.orientation as any).lock("landscape"); } catch { /* ignore */ }
+        }
+        setIsRotated(true);
+      }
     } else {
-      document.exitFullscreen();
-      // Our existing useEffect will unlock landscape and set isRotated(false)
+      // Back to normal
+      setIsRotated(false);
+      if (isMobile) {
+        try { await ScreenOrientation.unlock(); } catch {
+          try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
+        }
+      }
+      // Optional: keep fullscreen but portrait? Usually they want both off.
+      if (isFullscreen) await toggleFullscreen();
     }
   };
 
@@ -152,7 +186,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
         backgroundColor: baseBg,
         transition: "margin-left 0.25s ease, background-color 0.3s ease",
         display: "flex",
-        flexDirection: isTablet ? "column" : "row",
+        flexDirection: isMobile ? "column" : "row",
         position: "relative",
       }}
     >
@@ -192,10 +226,10 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
       {/* ─────────────────── LEFT: Player + Details ─────────────────── */}
       <Box
         sx={{
-          flex: isTablet ? "none" : "1 1 0",
+          flex: isMobile ? "none" : "1 1 0",
           display: "flex",
           flexDirection: "column",
-          width: isTablet ? "100%" : "auto",
+          width: isMobile ? "100%" : "auto",
           height: "auto",
           /* Semi-transparent so global ambient shows through */
           backgroundColor: panelBg,
@@ -216,6 +250,19 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
             overflow: "hidden",
             boxShadow: isFullscreen || isRotated ? "none" : "0 12px 48px rgba(0,0,0,0.5)",
             zIndex: isFullscreen || isRotated ? 9999 : 10,
+            /* Hybrid Fullscreen Fallback (Fixed positioning if native fails) */
+            ...(isFullscreen && !isRotated && {
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: "100vw",
+              height: "100vh",
+              margin: 0,
+              borderRadius: 0,
+              zIndex: 99999, // Over all else
+            }),
             /* When rotated on mobile, use CSS transform to simulate landscape */
             ...(isRotated && {
               transform: "rotate(90deg)",
@@ -227,6 +274,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               left: "50%",
               marginTop: "-50vw",
               marginLeft: "-50vh",
+              zIndex: 99999,
             }),
             "&:hover .fullscreen-btn": { opacity: "1 !important" },
           }}
@@ -244,8 +292,9 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               src={`https://www.youtube.com/embed/${id}?rel=0&autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3&showinfo=0&color=white&fs=0`}
               title={selectedVideo.title}
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              sandbox="allow-same-origin allow-scripts"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-presentation"
               style={{
                 position: "absolute",
                 top: 0,
@@ -330,13 +379,13 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                 color: textColor,
                 backgroundColor: btnBg,
                 "&:hover": { backgroundColor: btnHoverBg },
-                width: 36,
-                height: 36,
+                width: isMobile ? 44 : 36,
+                height: isMobile ? 44 : 36,
                 flexShrink: 0,
                 mt: 0.5,
               }}
             >
-              {isFullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+              {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
             </IconButton>
             {/* Rotate button — mobile only */}
             {isMobile && (
@@ -346,13 +395,13 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                   color: isRotated ? "#ff4444" : textColor,
                   backgroundColor: btnBg,
                   "&:hover": { backgroundColor: btnHoverBg },
-                  width: 36,
-                  height: 36,
+                  width: 44,
+                  height: 44,
                   flexShrink: 0,
                   mt: 0.5,
                 }}
               >
-                <ScreenRotationIcon fontSize="small" />
+                <ScreenRotationIcon />
               </IconButton>
             )}
           </Box>
@@ -608,7 +657,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
       {/* ─────────────────── RIGHT: Playlist ─────────────────── */}
       <Box
         sx={{
-          width: isTablet ? "100%" : { md: 420, lg: 480 },
+          width: isMobile ? "100%" : { md: 420, lg: 480 },
           flexShrink: 0,
           height: "auto",
           display: "flex",
@@ -616,8 +665,8 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           backgroundColor: rightPanelBg,
           backdropFilter: "blur(2px)",
           WebkitBackdropFilter: "blur(2px)",
-          borderLeft: isTablet ? "none" : `1px solid ${borderColor}`,
-          borderTop: isTablet ? `1px solid ${borderColor}` : "none",
+          borderLeft: isMobile ? "none" : `1px solid ${borderColor}`,
+          borderTop: isMobile ? `1px solid ${borderColor}` : "none",
           zIndex: 1,
         }}
       >
