@@ -72,40 +72,38 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   };
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-
-  // Mobile: fullscreen + rotate 90° for landscape viewing
-  const toggleRotate = async () => {
-    if (!playerContainerRef.current) return;
-    if (!isRotated) {
-      await playerContainerRef.current.requestFullscreen();
-      try {
-        await (screen.orientation as any).lock("landscape");
-      } catch { /* orientation lock not supported — CSS rotation will handle it */ }
-      setIsRotated(true);
-    } else {
-      try {
-        (screen.orientation as any).unlock();
-      } catch { /* ignore */ }
-      if (document.fullscreenElement) document.exitFullscreen();
-      setIsRotated(false);
-    }
-  };
-
-  // Sync rotated state when exiting fullscreen via Escape
-  useEffect(() => {
     const handler = () => {
-      if (!document.fullscreenElement && isRotated) {
-        setIsRotated(false);
-        try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
+      const active = !!document.fullscreenElement;
+      setIsFullscreen(active);
+      // Auto-landscape on mobile when fullscreen is active
+      if (isMobile) {
+        if (active) {
+          try { (screen.orientation as any).lock("landscape"); } catch { /* ignore */ }
+        } else {
+          try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
+          setIsRotated(false);
+        }
       }
     };
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
-  }, [isRotated]);
+  }, [isMobile]);
+
+  // Mobile: fullscreen + rotate 90° for landscape viewing
+  const toggleRotate = async () => {
+    if (!playerContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      await playerContainerRef.current.requestFullscreen();
+      // Our existing useEffect[isMobile, active] will detect this and lock landscape
+      setIsRotated(true);
+    } else {
+      document.exitFullscreen();
+      // Our existing useEffect will unlock landscape and set isRotated(false)
+    }
+  };
+
+
 
   if (!selectedVideo) {
     return (
@@ -237,7 +235,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
             sx={{
               position: "relative",
               width: "100%",
-              paddingTop: isFullscreen || isRotated ? 0 : "56.25%",
+              paddingTop: isFullscreen || isRotated ? 0 : (isMobile ? "65%" : "56.25%"),
               height: isFullscreen || isRotated ? "100vh" : 0,
               overflow: "hidden",
             }}
@@ -313,7 +311,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
         {/* ── Details ── */}
         <Box sx={{ px: { xs: 2, md: 3 }, py: 2.5, flex: 1 }}>
           {/* Title row with fullscreen button */}
-          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1, mb: 1.5 }}>
             <Typography
               sx={{
                 color: textColor,
@@ -362,19 +360,18 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           {/* Channel + actions row */}
           <Box
             display="flex"
-            alignItems="center"
+            flexDirection={isMobile ? "column" : "row"}
+            alignItems={isMobile ? "flex-start" : "center"}
             justifyContent="space-between"
-            flexWrap="wrap"
             gap={2}
             mb={2.5}
           >
-            {/* Channel */}
-            <Box display="flex" alignItems="center" gap={1.5}>
+            <Box display="flex" alignItems="center" gap={isMobile ? 1 : 1.5}>
               <Avatar
                 sx={{
-                  width: 42,
-                  height: 42,
-                  fontSize: "17px",
+                  width: isMobile ? 34 : 42,
+                  height: isMobile ? 34 : 42,
+                  fontSize: isMobile ? "15px" : "17px",
                   fontWeight: 700,
                   background: "linear-gradient(135deg, #ff0000, #cc2200)",
                   flexShrink: 0,
@@ -383,44 +380,105 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                 T
               </Avatar>
               <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: "15px", color: textColor }}>
+                <Typography sx={{ fontWeight: 700, fontSize: isMobile ? "14px" : "15px", color: textColor }}>
                   TomTube Channel
                 </Typography>
-                <Typography sx={{ fontSize: "13px", color: metaColor }}>
+                <Typography sx={{ fontSize: isMobile ? "12px" : "13px", color: metaColor }}>
                   {videoIndex + 1} of {videoData.length}
                 </Typography>
               </Box>
             </Box>
 
-            {/* Action buttons */}
-            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-              {[
-                { icon: <ThumbUpOutlinedIcon sx={{ fontSize: 18 }} />, label: "Like" },
-                { icon: <ThumbDownOutlinedIcon sx={{ fontSize: 18 }} />, label: "" },
-                { icon: <ShareIcon sx={{ fontSize: 17 }} />, label: "Share" },
-                { icon: <BookmarkBorderIcon sx={{ fontSize: 17 }} />, label: "Save" },
-              ].map(({ icon, label }) => (
-                <IconButton
-                  key={label || "dislike"}
-                  size="small"
+            {/* Action buttons container */}
+            <Box
+              sx={{
+                width: isMobile ? "100%" : "auto",
+                overflow: "hidden" // Container prevents layout break
+              }}
+            >
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={1}
+                sx={{
+                  pb: isMobile ? 1 : 0,
+                  // Enable horizontal scroll on mobile ONLY
+                  overflowX: isMobile ? "auto" : "visible",
+                  whiteSpace: "nowrap",
+                  // Hide scrollbar but keep functionality
+                  "&::-webkit-scrollbar": { display: "none" },
+                  msOverflowStyle: "none",
+                  scrollbarWidth: "none",
+                }}
+              >
+                {/* Like / Dislike Group */}
+                <Box
                   sx={{
+                    display: "flex",
+                    alignItems: "center",
                     backgroundColor: btnBg,
                     borderRadius: "20px",
-                    px: label ? 1.5 : 1.25,
-                    gap: label ? 0.5 : 0,
-                    color: textColor,
-                    "&:hover": { backgroundColor: btnHoverBg },
+                    overflow: "hidden",
+                    flexShrink: 0,
                   }}
                 >
-                  {icon}
-                  {label && (
-                    <Typography sx={{ fontSize: "13px", color: textColor, fontWeight: 500 }}>
+                  <IconButton
+                    size="small"
+                    sx={{
+                      px: 2,
+                      py: 0.8,
+                      borderRadius: 0,
+                      gap: 1,
+                      color: textColor,
+                      "&:hover": { backgroundColor: btnHoverBg },
+                      borderRight: `1px solid ${borderColor}`,
+                    }}
+                  >
+                    <ThumbUpOutlinedIcon sx={{ fontSize: 18 }} />
+                    <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>Like</Typography>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    sx={{
+                      px: 1.5,
+                      py: 0.8,
+                      borderRadius: 0,
+                      color: textColor,
+                      "&:hover": { backgroundColor: btnHoverBg },
+                    }}
+                  >
+                    <ThumbDownOutlinedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Box>
+
+                {[
+                  { icon: <ShareIcon sx={{ fontSize: 17 }} />, label: "Share" },
+                  { icon: <BookmarkBorderIcon sx={{ fontSize: 17 }} />, label: "Save" },
+                ].map(({ icon, label }) => (
+                  <IconButton
+                    key={label}
+                    size="small"
+                    sx={{
+                      backgroundColor: btnBg,
+                      borderRadius: "20px",
+                      px: 2,
+                      py: 0.8,
+                      gap: 1,
+                      color: textColor,
+                      height: "36px",
+                      flexShrink: 0,
+                      "&:hover": { backgroundColor: btnHoverBg },
+                    }}
+                  >
+                    {icon}
+                    <Typography sx={{ fontSize: "13px", color: textColor, fontWeight: 600 }}>
                       {label}
                     </Typography>
-                  )}
-                </IconButton>
-              ))}
-              {/* Non-clickable badge — shows source, no navigation */}
+                  </IconButton>
+                ))}
+              </Box>
+
+              {/* YouTube badge — now fixed below with better spacing */}
               <Box
                 sx={{
                   display: "flex",
@@ -429,14 +487,16 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                   backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
                   borderRadius: "20px",
                   px: 1.5,
-                  py: 0.6,
+                  py: 0.5,
+                  mt: 1, // Space from scroll row
                   border: `1px solid ${borderColor}`,
                   cursor: "default",
                   userSelect: "none",
+                  width: "fit-content",
                 }}
               >
                 <YouTubeIcon sx={{ fontSize: 16, color: "#ff0000" }} />
-                <Typography sx={{ fontSize: "12px", color: metaColor, fontWeight: 500 }}>
+                <Typography sx={{ fontSize: "10px", color: metaColor, fontWeight: 700, letterSpacing: "0.2px", textTransform: "uppercase" }}>
                   Powered by YouTube
                 </Typography>
               </Box>

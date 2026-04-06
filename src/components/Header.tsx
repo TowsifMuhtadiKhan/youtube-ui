@@ -255,18 +255,37 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             >
               <img src={Logo} alt="TomTube" style={{ height: 28 }} />
               {!isMobile && (
-                <Typography
-                  sx={{
-                    fontSize: isTablet ? "17px" : "19px",
-                    fontWeight: 800,
-                    letterSpacing: "-0.5px",
-                    color: isDark ? "#f1f1f1" : "#0f0f0f",
-                    fontFamily: "'Inter', sans-serif",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  TomTube
-                </Typography>
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Typography
+                    sx={{
+                      fontSize: isTablet ? "17px" : "19px",
+                      fontWeight: 800,
+                      letterSpacing: "-0.5px",
+                      color: isDark ? "#f1f1f1" : "#0f0f0f",
+                      fontFamily: "'Inter', sans-serif",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    TomTube
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      color: "white",
+                      backgroundColor: "#ff0000",
+                      px: 0.75,
+                      py: 0.25,
+                      borderRadius: "6px",
+                      lineHeight: 1,
+                      letterSpacing: "0.2px",
+                      alignSelf: "flex-start",
+                      mt: "2px",
+                    }}
+                  >
+                    v1.0.0
+                  </Typography>
+                </Box>
               )}
             </Box>
           </Box>
@@ -274,8 +293,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           {/* Center – Search */}
           <Box
             sx={{
-              flexGrow: isMobile ? 0 : 1,
-              maxWidth: isMobile ? "160px" : "560px",
+              flexGrow: isMobile ? 1 : 1,
+              maxWidth: isMobile ? "240px" : "560px",
               position: "relative",
             }}
           >

@@ -25,7 +25,7 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDark = theme.palette.mode === "dark";
 
-  const sidebarWidth = isSidebarExpanded ? 232 : 72;
+  const sidebarWidth = isMobile ? 0 : isSidebarExpanded ? 232 : 72;
   const cardBg = isDark ? "#1a1a1a" : "#f5f5f5";
   const cardHoverBg = isDark ? "#242424" : "#eaeaea";
   const metaColor = isDark ? "#aaaaaa" : "#606060";

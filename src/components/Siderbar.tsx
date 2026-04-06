@@ -23,6 +23,7 @@ import {
   SportsBaseball as SportsBaseballIcon,
   Settings as SettingsIcon,
   Feedback as FeedbackIcon,
+  Android as AndroidIcon,
 } from "@mui/icons-material";
 
 interface SidebarProps {
@@ -60,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const lastSections = [
     { icon: <SettingsIcon />, label: "Settings", path: "/settings" },
     { icon: <FeedbackIcon />, label: "Feedback", path: "/feedback" },
+    { icon: <AndroidIcon sx={{ color: "#3DDC84" }} />, label: "Download App", path: "https://drive.google.com/drive/folders/1g6IDpBA6GNOas-CTL9ZjOOcQUrhoc17p", external: true },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -72,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const textActiveColor = isDark ? "#ffffff" : "#000000";
 
   const renderSection = (
-    items: Array<{ icon: JSX.Element; label: string; path: string }>,
+    items: Array<{ icon: JSX.Element; label: string; path: string; external?: boolean }>,
     sectionLabel?: string
   ) => (
     <>
@@ -98,7 +100,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
           <Box
             key={section.path}
             onClick={() => {
-              navigate(section.path);
+              if (section.external) {
+                window.open(section.path, "_blank");
+              } else {
+                navigate(section.path);
+              }
               if (isMobile && onClose) onClose();
             }}
             sx={{

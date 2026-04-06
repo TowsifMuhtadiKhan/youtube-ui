@@ -49,7 +49,6 @@ type CurrentVideo = Movie | Episode | null;
 
 export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
   const navigate = useNavigate();
@@ -61,7 +60,8 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const sidebarWidth = isSidebarExpanded ? 232 : 72;
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const sidebarWidth = isMobile ? 0 : isSidebarExpanded ? 232 : 72;
   const bg = isDark ? "#0f0f0f" : "#ffffff";
   const cardBg = isDark ? "#1a1a1a" : "#f5f5f5";
   const textColor = isDark ? "#f1f1f1" : "#0f0f0f";

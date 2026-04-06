@@ -3,8 +3,8 @@ import {
   Box,
   Typography,
   Grid,
-  useMediaQuery,
   useTheme,
+  useMediaQuery,
   Card,
   CardContent,
   IconButton,
@@ -28,10 +28,10 @@ const EPISODE_THUMB_HEIGHT = 160;
 const MediaBrowser: React.FC<MediaBrowserProps> = ({ isSidebarExpanded }) => {
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDark = theme.palette.mode === "dark";
 
-  const sidebarWidth = isSidebarExpanded ? 232 : 72;
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const sidebarWidth = isMobile ? 0 : isSidebarExpanded ? 232 : 72;
   const cardBg = isDark ? "#1a1a1a" : "#f5f5f5";
   const textColor = isDark ? "#f1f1f1" : "#0f0f0f";
   const metaColor = isDark ? "#aaaaaa" : "#606060";

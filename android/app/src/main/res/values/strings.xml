@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">YouTubeUI</string>
+    <string name="title_activity_main">YouTubeUI</string>
+    <string name="package_name">com.towsif.youtube</string>
+    <string name="custom_url_scheme">com.towsif.youtube</string>
+</resources>

@@ -17,7 +17,7 @@ export const Subscription: React.FC<SubscriptionProps> = ({ isSidebarExpanded })
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  const sidebarWidth = isSidebarExpanded ? 232 : 72;
+  const sidebarWidth = window.innerWidth <= 600 ? 0 : isSidebarExpanded ? 232 : 72;
   const bg = isDark ? "#0f0f0f" : "#ffffff";
   const cardBg = isDark ? "#1a1a1a" : "#f5f5f5";
   const textColor = isDark ? "#f1f1f1" : "#0f0f0f";
