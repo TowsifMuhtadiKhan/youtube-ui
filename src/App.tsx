@@ -9,55 +9,16 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import MediaBrowser from "./components/Shorts";
 import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
-import { useMediaQuery } from "@mui/material";
+import { useMediaQuery, useTheme } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
 import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
 import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
-
-const theme = createTheme({
-  typography: {
-    allVariants: {
-      color: "white",
-      fontSize: "14px",
-    },
-  },
-  components: {
-    MuiDivider: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "#4e4e4eff",
-        },
-      },
-    },
-    MuiTabs: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "#090909",
-        },
-        indicator: {
-          backgroundColor: "#eeeeeeff",
-        },
-      },
-    },
-    MuiTab: {
-      styleOverrides: {
-        root: {
-          color: "#949494ff",
-          textTransform: "none",
-          "&.Mui-selected": {
-            color: "#eeeeeeff",
-          },
-        },
-      },
-    },
-  },
-});
+import { AppThemeProvider } from "./components/ThemeContext";
 
 const LoadingScreen = () => (
   <Box
@@ -65,9 +26,11 @@ const LoadingScreen = () => (
     justifyContent="center"
     alignItems="center"
     minHeight="100vh"
-    bgcolor="#0F0F0F"
+    sx={{ backgroundColor: "background.default" }}
   >
-    <CircularProgress color="primary" />
+    <Box textAlign="center">
+      <CircularProgress sx={{ color: "#ff0000" }} size={36} thickness={3} />
+    </Box>
   </Box>
 );
 
@@ -77,30 +40,30 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Check if auth state has been initialized
     if (auth.isAuthenticated !== undefined) {
       setIsInitialized(true);
     }
   }, [auth.isAuthenticated]);
 
-  if (!isInitialized) {
-    return <LoadingScreen />;
-  }
-
+  if (!isInitialized) return <LoadingScreen />;
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-
   return children;
 };
 
 const AppContent = () => {
+  const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [isSidebarExpanded, setSidebarExpanded] = useState(!isMobile);
   const location = useLocation();
 
   const handleToggleSidebar = () => {
-    setSidebarExpanded((prevState) => !prevState);
+    setSidebarExpanded((prev) => !prev);
+  };
+
+  const handleCloseSidebar = () => {
+    if (isMobile) setSidebarExpanded(false);
   };
 
   useEffect(() => {
@@ -110,9 +73,15 @@ const AppContent = () => {
   const isLoginPage = location.pathname === "/login";
 
   return (
-    <>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: "background.default",
+        transition: "background-color 0.3s ease",
+      }}
+    >
       {!isLoginPage && <Header onToggleSidebar={handleToggleSidebar} />}
-      {!isLoginPage && <Sidebar isSidebarExpanded={isSidebarExpanded} />}
+      {!isLoginPage && <Sidebar isSidebarExpanded={isSidebarExpanded} onClose={handleCloseSidebar} />}
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -164,19 +133,19 @@ const AppContent = () => {
           }
         />
       </Routes>
-    </>
+    </Box>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
+    <AppThemeProvider>
       <Router>
         <AuthProvider>
           <AppContent />
         </AuthProvider>
       </Router>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 };
 

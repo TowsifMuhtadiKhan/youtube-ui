@@ -6,7 +6,6 @@ import {
   IconButton,
   Box,
   Avatar,
-  Button,
   TextField,
   useTheme,
   useMediaQuery,
@@ -17,19 +16,27 @@ import {
   ListItemText,
   ListItemButton,
   styled,
+  Tooltip,
+  Badge,
 } from "@mui/material";
 import { Menu as MenuIcon } from "@mui/icons-material";
 import Logo from "../assets/youtube-svgrepo-com.svg";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
 import { useNavigate } from "react-router-dom";
 import videoData from "./data.json";
 import seriesMoviesData from "./driveData.json";
 import { useAuth } from "./Auth/AuthContext";
+import { useThemeMode } from "./ThemeContext";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import LogoutIcon from "@mui/icons-material/Logout";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import VideoLibraryIcon from "@mui/icons-material/VideoLibrary";
+import Divider from "@mui/material/Divider";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -46,22 +53,27 @@ interface SearchResult {
   series_id?: string;
 }
 
-const SuggestionPaper = styled(Paper)(({ theme }) => ({
+const SuggestionPaper = styled(Paper)(() => ({
   position: "absolute",
-  top: "100%",
+  top: "calc(100% + 8px)",
   left: 0,
   right: 0,
   zIndex: 1300,
-  marginTop: theme.spacing(0.5),
-  maxHeight: "400px",
+  maxHeight: "420px",
   overflowY: "auto",
-  backgroundColor: "#0F0F0F",
-  border: "1px solid #3F3F3F",
+  backgroundColor: "#1c1c1c",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: "12px",
+  boxShadow: "0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
 }));
 
-const SuggestionItem = styled(ListItemButton)(({}) => ({
+const SuggestionItem = styled(ListItemButton)(() => ({
+  padding: "10px 16px",
+  transition: "background-color 0.15s ease",
   "&:hover": {
-    backgroundColor: "#585858ff !important",
+    backgroundColor: "rgba(255,255,255,0.07) !important",
   },
 }));
 
@@ -69,22 +81,21 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const navigate = useNavigate();
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const auth = useAuth();
+  const { colorMode, toggleColorMode } = useThemeMode();
   const open = Boolean(anchorEl);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
+  const handleClose = () => setAnchorEl(null);
   const handleLogout = () => {
     auth.logout();
     handleClose();
@@ -96,10 +107,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       setSuggestions([]);
       return;
     }
-
     const lowerQuery = query.toLowerCase();
-
-    // Search in video data
     const videoResults: SearchResult[] = videoData
       .filter(
         (video) =>
@@ -114,7 +122,6 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         type: "video",
       }));
 
-    // Search in series data
     const seriesResults: SearchResult[] = seriesMoviesData.series
       .filter(
         (series) =>
@@ -127,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           title: series.title,
           description: series.description,
           thumbnail: series.thumbnail,
-          type: "series" as const, // Explicitly set the type
+          type: "series" as const,
         },
         ...series.episodes
           .filter(
@@ -137,16 +144,15 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           )
           .map((episode) => ({
             id: `${series.id}_${episode.episode_number}`,
-            title: `${series.title} - Episode ${episode.episode_number}: ${episode.title}`,
+            title: `${series.title} - Ep ${episode.episode_number}: ${episode.title}`,
             description: episode.description,
             thumbnail: episode.thumbnail,
-            type: "episode" as const, // Explicitly set the type
+            type: "episode" as const,
             episode_number: episode.episode_number,
             series_id: series.id,
           })),
       ]);
 
-    // Search in movies data
     const movieResults: SearchResult[] = seriesMoviesData.movies
       .filter(
         (movie) =>
@@ -161,25 +167,16 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         type: "movie",
       }));
 
-    const allResults = [...videoResults, ...seriesResults, ...movieResults];
-    setSuggestions(allResults);
+    setSuggestions([...videoResults, ...seriesResults, ...movieResults]);
   };
 
   const handleSuggestionClick = (item: SearchResult) => {
     switch (item.type) {
-      case "video":
-        navigate(`/video/${item.id}`);
-        break;
-      case "series":
-        navigate(`/series/${item.id}`);
-        break;
-      case "movie":
-        navigate(`/movie/${item.id}`);
-        break;
+      case "video": navigate(`/video/${item.id}`); break;
+      case "series": navigate(`/series/${item.id}`); break;
+      case "movie": navigate(`/movie/${item.id}`); break;
       case "episode":
-        if (item.series_id) {
-          navigate(`/series/${item.series_id}/episode/${item.episode_number}`);
-        }
+        if (item.series_id) navigate(`/series/${item.series_id}/episode/${item.episode_number}`);
         break;
     }
     setSearchQuery("");
@@ -188,38 +185,44 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && searchQuery.trim() !== "") {
-      if (suggestions.length > 0) {
-        handleSuggestionClick(suggestions[0]);
-      }
+    if (e.key === "Enter" && searchQuery.trim() !== "" && suggestions.length > 0) {
+      handleSuggestionClick(suggestions[0]);
+    }
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
     }
   };
 
   const truncateText = (text: string, maxLength: number): string => {
     if (!text) return "";
-    return text.length > maxLength
-      ? `${text.substring(0, maxLength)}...`
-      : text;
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
-  // Updated getSubtitle function
   const getSubtitle = (item: SearchResult) => {
-    if (item.subTitle) return truncateText(item.subTitle, 50);
-    if (item.description) return truncateText(item.description, 50);
-    return "";
+    const typeLabel = item.type === "video" ? "Video" : item.type === "movie" ? "Movie" : item.type === "series" ? "Series" : "Episode";
+    const detail = item.subTitle || item.description || "";
+    return `${typeLabel}${detail ? " • " + truncateText(detail, 45) : ""}`;
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSuggestions([]);
   };
 
   return (
     <AppBar
       position="fixed"
+      elevation={0}
       sx={{
         zIndex: 1201,
-        backgroundColor: "#0F0F0F",
-        boxShadow: "none",
+        backgroundColor: isDark ? "rgba(15,15,15,0.92)" : "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.08)",
         px: isMobile ? 1 : 2,
       }}
     >
-      <Toolbar sx={{ minHeight: "64px !important" }}>
+      <Toolbar sx={{ minHeight: "64px !important", gap: 1 }}>
         <Box
           display="flex"
           justifyContent="space-between"
@@ -228,163 +231,215 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           gap={1}
           position="relative"
         >
-          {/* Left Section - Logo & Menu */}
-          <Box display="flex" alignItems="center" gap={1}>
-            <IconButton edge="start" color="inherit" onClick={onToggleSidebar}>
-              <MenuIcon />
-            </IconButton>
-            <img
-              src={Logo}
-              alt="Logo"
-              style={{ height: 30, marginRight: 2 }}
-              onClick={() => navigate("/")}
-            />
-            {!isMobile && (
-              <Typography
-                fontSize={isTablet ? "18px" : "20px"}
-                fontWeight="bold"
+          {/* Left – Logo & Menu */}
+          <Box display="flex" alignItems="center" gap={0.5} sx={{ flexShrink: 0 }}>
+            <Tooltip title="Toggle sidebar" placement="bottom">
+              <IconButton
+                edge="start"
+                onClick={onToggleSidebar}
+                sx={{
+                  color: isDark ? "#f1f1f1" : "#0f0f0f",
+                  "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
+                  borderRadius: "50%",
+                }}
               >
-                TomTube
-              </Typography>
-            )}
+                <MenuIcon />
+              </IconButton>
+            </Tooltip>
+            <Box
+              display="flex"
+              alignItems="center"
+              gap={1}
+              sx={{ cursor: "pointer", "&:hover": { opacity: 0.85 } }}
+              onClick={() => navigate("/")}
+            >
+              <img src={Logo} alt="TomTube" style={{ height: 28 }} />
+              {!isMobile && (
+                <Typography
+                  sx={{
+                    fontSize: isTablet ? "17px" : "19px",
+                    fontWeight: 800,
+                    letterSpacing: "-0.5px",
+                    color: isDark ? "#f1f1f1" : "#0f0f0f",
+                    fontFamily: "'Inter', sans-serif",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  TomTube
+                </Typography>
+              )}
+            </Box>
           </Box>
 
-          {/* Center Section - Search */}
+          {/* Center – Search */}
           <Box
-            display="flex"
-            alignItems="center"
-            gap={1}
             sx={{
               flexGrow: isMobile ? 0 : 1,
-              maxWidth: isMobile ? "none" : "600px",
-              justifyContent: "center",
+              maxWidth: isMobile ? "160px" : "560px",
               position: "relative",
             }}
           >
             <Box
-              display="flex"
-              alignItems="center"
-              border={1}
-              borderColor="#3F3F3F"
-              borderRadius="20px"
-              bgcolor="#222"
-              sx={{ width: "100%" }}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                border: searchFocused
+                  ? isDark ? "1.5px solid rgba(255,255,255,0.3)" : "1.5px solid rgba(0,0,0,0.3)"
+                  : isDark ? "1.5px solid rgba(255,255,255,0.1)" : "1.5px solid rgba(0,0,0,0.15)",
+                borderRadius: "24px",
+                overflow: "hidden",
+                backgroundColor: isDark
+                  ? (searchFocused ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)")
+                  : (searchFocused ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.04)"),
+                transition: "all 0.2s ease",
+                boxShadow: searchFocused ? "0 0 0 3px rgba(255,0,0,0.08)" : "none",
+              }}
             >
+              <Box
+                sx={{
+                  pl: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  color: searchFocused ? (isDark ? "#f1f1f1" : "#0f0f0f") : "#888",
+                }}
+              >
+                <SearchIcon sx={{ fontSize: 18 }} />
+              </Box>
               <TextField
                 size="small"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   handleSearch(e.target.value);
+                  setShowSuggestions(true);
                 }}
                 onKeyDown={handleKeyDown}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onFocus={() => { setShowSuggestions(true); setSearchFocused(true); }}
+                onBlur={() => { setTimeout(() => setShowSuggestions(false), 200); setSearchFocused(false); }}
                 InputProps={{
                   sx: {
-                    borderRadius: "20px 0 0 20px",
-                    backgroundColor: "#111",
-                    "& fieldset": { borderColor: "#3F3F3F" },
-                    "&:hover fieldset": { borderColor: "#5F5F5F" },
-                    "&.Mui-focused fieldset": { borderColor: "#5F5F5F" },
-                    "& input::placeholder": { color: "#999", opacity: 1 },
-                    color: "#fff",
+                    backgroundColor: "transparent",
+                    color: isDark ? "#f1f1f1" : "#0f0f0f",
+                    "& fieldset": { border: "none" },
+                    "& input::placeholder": { color: "#888", opacity: 1, fontSize: "14px" },
+                    fontSize: "14px",
+                    height: 38,
+                    px: 0.5,
                   },
                 }}
                 variant="outlined"
-                placeholder="Search"
-                sx={{
-                  width: "100%",
-                  "& .MuiInputBase-root": { height: 40 },
-                }}
+                placeholder={isMobile ? "Search..." : "Search TomTube..."}
+                sx={{ width: "100%" }}
               />
-              <IconButton
-                sx={{
-                  borderRadius: "0 20px 20px 0",
-                  padding: "8px",
-                  backgroundColor: "#222",
-                  "&:hover": { backgroundColor: "#333" },
-                }}
-              >
-                <SearchIcon sx={{ fontSize: "20px", color: "white" }} />
-              </IconButton>
+              {searchQuery && (
+                <IconButton
+                  size="small"
+                  onClick={clearSearch}
+                  sx={{ mr: 0.5, color: "#888", "&:hover": { color: "#f1f1f1" }, p: 0.5 }}
+                >
+                  <ClearIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
             </Box>
 
-            {/* Search Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
+            {/* Suggestions dropdown */}
+            {showSuggestions && (
               <SuggestionPaper>
-                <List dense>
-                  {suggestions.map((item) => (
-                    <ListItem key={item.id} disablePadding>
-                      <SuggestionItem
-                        onClick={() => handleSuggestionClick(item)}
-                      >
-                        <ListItemAvatar>
-                          <Box
-                            component="img"
-                            src={item.thumbnail}
-                            alt={item.title}
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              objectFit: "cover",
-                              borderRadius: 1,
+                {suggestions.length > 0 ? (
+                  <List dense disablePadding sx={{ py: 0.5 }}>
+                    {suggestions.map((item) => (
+                      <ListItem key={item.id} disablePadding>
+                        <SuggestionItem onClick={() => handleSuggestionClick(item)}>
+                          <ListItemAvatar sx={{ minWidth: 50 }}>
+                            <Box
+                              component="img"
+                              src={item.thumbnail}
+                              alt={item.title}
+                              sx={{
+                                width: 44,
+                                height: 44,
+                                objectFit: "cover",
+                                borderRadius: "8px",
+                              }}
+                            />
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={truncateText(item.title, 42)}
+                            secondary={getSubtitle(item)}
+                            primaryTypographyProps={{
+                              sx: { color: "#f1f1f1", fontWeight: 500, fontSize: "13px" },
+                            }}
+                            secondaryTypographyProps={{
+                              sx: { color: "#888", fontSize: "11px", mt: 0.25 },
                             }}
                           />
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={truncateText(item.title, 30)}
-                          secondary={getSubtitle(item)}
-                          primaryTypographyProps={{
-                            sx: { color: "#fff" },
-                          }}
-                          secondaryTypographyProps={{
-                            sx: { color: "#aaa" },
-                          }}
-                        />
-                      </SuggestionItem>
-                    </ListItem>
-                  ))}
-                </List>
-              </SuggestionPaper>
-            )}
-            {showSuggestions && suggestions.length === 0 && (
-              <SuggestionPaper>
-                <Typography sx={{ padding: 2, color: "#aaa" }}>
-                  No suggestions found
-                </Typography>
+                        </SuggestionItem>
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : searchQuery.trim() ? (
+                  <Box sx={{ px: 2, py: 2.5, textAlign: "center" }}>
+                    <Typography sx={{ color: "#666", fontSize: "13px" }}>
+                      No results for "{truncateText(searchQuery, 30)}"
+                    </Typography>
+                  </Box>
+                ) : null}
               </SuggestionPaper>
             )}
           </Box>
 
-          {/* Right Section - Actions */}
-          <Box display="flex" alignItems="center" gap={1}>
-            {!isMobile && (
-              <Button
-                startIcon={<AddIcon sx={{ color: "white" }} />}
+          {/* Right – Actions */}
+          <Box display="flex" alignItems="center" gap={0.5} sx={{ flexShrink: 0 }}>
+            {/* Theme Toggle */}
+            <Tooltip title={colorMode === "dark" ? "Switch to Light mode" : "Switch to Dark mode"} placement="bottom">
+              <IconButton
+                onClick={toggleColorMode}
                 sx={{
-                  backgroundColor: "#3F3F3F",
-                  padding: "6px 16px",
-                  borderRadius: "20px",
-                  textTransform: "none",
-                  fontWeight: "bold",
-                  "&:hover": { backgroundColor: "grey.500" },
-                  color: "white",
+                  color: isDark ? "#f1f1f1" : "#0f0f0f",
+                  "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
                 }}
               >
-                Create
-              </Button>
-            )}
-            {!isMobile && (
-              <IconButton>
-                <NotificationsNoneOutlinedIcon
-                  sx={{ fontSize: "26px", color: "white" }}
-                />
+                {colorMode === "dark" ? (
+                  <LightModeIcon sx={{ fontSize: 22 }} />
+                ) : (
+                  <DarkModeIcon sx={{ fontSize: 22 }} />
+                )}
               </IconButton>
+            </Tooltip>
+
+            {!isMobile && (
+              <Tooltip title="Notifications" placement="bottom">
+                <IconButton
+                  sx={{
+                    color: isDark ? "#f1f1f1" : "#0f0f0f",
+                    "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
+                  }}
+                >
+                  <Badge badgeContent={3} color="error" sx={{ "& .MuiBadge-badge": { fontSize: "10px", minWidth: "16px", height: "16px" } }}>
+                    <NotificationsNoneOutlinedIcon sx={{ fontSize: 24 }} />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
             )}
-            <IconButton onClick={handleAvatarClick}>
-              <Avatar sx={{ width: 32, height: 32 }}>T</Avatar>
-            </IconButton>
+
+            <Tooltip title="Account" placement="bottom">
+              <IconButton onClick={handleAvatarClick} sx={{ p: 0.5 }}>
+                <Avatar
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    background: "linear-gradient(135deg, #ff0000, #cc2200)",
+                    border: isDark ? "2px solid rgba(255,255,255,0.15)" : "2px solid rgba(0,0,0,0.15)",
+                    transition: "all 0.2s ease",
+                    "&:hover": { border: "2px solid rgba(255,0,0,0.5)", transform: "scale(1.05)" },
+                  }}
+                >
+                  T
+                </Avatar>
+              </IconButton>
+            </Tooltip>
 
             <Menu
               anchorEl={anchorEl}
@@ -394,37 +449,45 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               PaperProps={{
                 elevation: 0,
                 sx: {
-                  overflow: "visible",
-                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
                   mt: 1.5,
-                  "& .MuiAvatar-root": {
-                    width: 32,
-                    height: 32,
-                    ml: -0.5,
-                    mr: 1,
+                  minWidth: 200,
+                  backgroundColor: "#1c1c1c",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "12px",
+                  boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
+                  "& .MuiMenuItem-root": {
+                    fontSize: "14px",
+                    color: "#f1f1f1",
+                    py: 1.25,
+                    px: 2,
+                    gap: 1.5,
+                    borderRadius: "8px",
+                    mx: 0.5,
+                    mb: 0.25,
+                    "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" },
                   },
-                  "&:before": {
-                    content: '""',
-                    display: "block",
-                    position: "absolute",
-                    top: 0,
-                    right: 14,
-                    width: 10,
-                    height: 10,
-                    bgcolor: "background.paper",
-                    transform: "translateY(-50%) rotate(45deg)",
-                    zIndex: 0,
-                  },
-                  backgroundColor: "#282828",
-                  color: "white",
                 },
               }}
               transformOrigin={{ horizontal: "right", vertical: "top" }}
               anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
             >
-              <MenuItem onClick={handleLogout} sx={{ color: "white" }}>
-                <LogoutIcon sx={{ mr: 1 }} />
-                Logout
+              <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
+                <Typography sx={{ fontSize: "12px", color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                  Account
+                </Typography>
+              </Box>
+              <MenuItem onClick={() => navigate("/")}>
+                <VideoLibraryIcon sx={{ fontSize: 18, color: "#888" }} />
+                My Library
+              </MenuItem>
+              <MenuItem>
+                <PersonOutlineIcon sx={{ fontSize: 18, color: "#888" }} />
+                Profile
+              </MenuItem>
+              <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", my: 0.5, mx: 1 }} />
+              <MenuItem onClick={handleLogout} sx={{ color: "#ff6b6b !important" }}>
+                <LogoutIcon sx={{ fontSize: 18, color: "#ff6b6b" }} />
+                Sign out
               </MenuItem>
             </Menu>
           </Box>

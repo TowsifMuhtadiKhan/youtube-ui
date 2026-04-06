@@ -4,11 +4,11 @@ import {
   Divider,
   Drawer,
   Typography,
-  IconButton,
   useTheme,
   useMediaQuery,
+  Tooltip,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home as HomeIcon,
   Subscriptions as SubscriptionsIcon,
@@ -27,175 +27,204 @@ import {
 
 interface SidebarProps {
   isSidebarExpanded: boolean;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded }) => {
-  const navigate = useNavigate(); // Initialize navigate
+const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
-
-  // Use Media Query to detect mobile screen sizes
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDark = theme.palette.mode === "dark";
 
-  // Define sections
   const sections = [
-    {
-      icon: <HomeIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Home",
-      path: "/home",
-    },
-    {
-      icon: <VideoLibraryIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Movies",
-      path: "/movies",
-    },
-    {
-      icon: <SubscriptionsIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Subscriptions",
-      path: "/subscriptions",
-    },
+    { icon: <HomeIcon />, label: "Home", path: "/home" },
+    { icon: <VideoLibraryIcon />, label: "Movies", path: "/movies" },
+    { icon: <SubscriptionsIcon />, label: "Subscriptions", path: "/subscriptions" },
   ];
 
   const moreSections = [
-    {
-      icon: <HistoryIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "History",
-      path: "/history",
-    },
-    {
-      icon: <PlaylistPlayIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Playlist",
-      path: "/playlist",
-    },
-    {
-      icon: <WatchLaterIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Watch Later",
-      path: "/watch-later",
-    },
-    {
-      icon: <ThumbUpAltIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Liked Videos",
-      path: "/liked-videos",
-    },
+    { icon: <HistoryIcon />, label: "History", path: "/history" },
+    { icon: <PlaylistPlayIcon />, label: "Playlist", path: "/playlist" },
+    { icon: <WatchLaterIcon />, label: "Watch Later", path: "/watch-later" },
+    { icon: <ThumbUpAltIcon />, label: "Liked Videos", path: "/liked-videos" },
   ];
 
   const trendingSections = [
-    {
-      icon: <TrendingUpIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Trending",
-      path: "/trending",
-    },
-    {
-      icon: <MusicNoteIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Music",
-      path: "/music",
-    },
-    {
-      icon: <SportsEsportsIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Gaming",
-      path: "/gaming",
-    },
-    {
-      icon: <SportsBaseballIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Sports",
-      path: "/sports",
-    },
+    { icon: <TrendingUpIcon />, label: "Trending", path: "/trending" },
+    { icon: <MusicNoteIcon />, label: "Music", path: "/music" },
+    { icon: <SportsEsportsIcon />, label: "Gaming", path: "/gaming" },
+    { icon: <SportsBaseballIcon />, label: "Sports", path: "/sports" },
   ];
 
   const lastSections = [
-    {
-      icon: <SettingsIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Settings",
-      path: "/settings",
-    },
-    {
-      icon: <FeedbackIcon sx={{ fontSize: "25px", color: "white" }} />,
-      label: "Feedback",
-      path: "/feedback",
-    },
+    { icon: <SettingsIcon />, label: "Settings", path: "/settings" },
+    { icon: <FeedbackIcon />, label: "Feedback", path: "/feedback" },
   ];
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path;
+
+  const bgActive = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+  const bgHover = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+  const iconColor = isDark ? "#f1f1f1" : "#0f0f0f";
+  const iconActiveColor = isDark ? "#ffffff" : "#000000";
+  const textColor = isDark ? "#f1f1f1" : "#0f0f0f";
+  const textActiveColor = isDark ? "#ffffff" : "#000000";
 
   const renderSection = (
-    sections: Array<{ icon: JSX.Element; label: string; path: string }>
-  ) => {
-    return sections.map((section, index) => (
-      <Box
-        key={index}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          backgroundColor: isActive(section.path) ? "#333" : "transparent",
-          borderRadius: isActive(section.path) ? "10px" : "0px",
-          marginBottom: 1,
-          "&:hover": {
-            backgroundColor: "#333", // Change to gray color on hover
-            borderRadius: "10px",
-          },
-        }}
-        onClick={() => navigate(section.path)} // Use navigate on click
-        style={{ cursor: "pointer" }} // Add pointer cursor to indicate it's clickable
-      >
-        <IconButton>
-          {" "}
-          {React.cloneElement(section.icon, {
-            sx: {
-              fontSize: "25px",
-              color: isActive(section.path) ? "#d6d6d6" : "white",
-            },
-          })}
-        </IconButton>
-        {isSidebarExpanded && (
-          <Typography
-            fontWeight={500}
+    items: Array<{ icon: JSX.Element; label: string; path: string }>,
+    sectionLabel?: string
+  ) => (
+    <>
+      {sectionLabel && isSidebarExpanded && (
+        <Typography
+          sx={{
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "0.8px",
+            textTransform: "uppercase",
+            color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)",
+            px: 1.5,
+            pt: 1,
+            pb: 0.5,
+          }}
+        >
+          {sectionLabel}
+        </Typography>
+      )}
+      {items.map((section) => {
+        const active = isActive(section.path);
+        const item = (
+          <Box
+            key={section.path}
+            onClick={() => {
+              navigate(section.path);
+              if (isMobile && onClose) onClose();
+            }}
             sx={{
-              marginLeft: 2,
-              color: isActive(section.path) ? "#d6d6d6" : "white",
+              display: "flex",
+              alignItems: "center",
+              gap: isSidebarExpanded ? 1.5 : 0,
+              justifyContent: isSidebarExpanded ? "flex-start" : "center",
+              px: isSidebarExpanded ? 1.5 : 0,
+              py: 0.85,
+              borderRadius: "10px",
+              mb: 0.25,
+              cursor: "pointer",
+              backgroundColor: active ? bgActive : "transparent",
+              transition: "all 0.15s ease",
+              "&:hover": {
+                backgroundColor: active ? bgActive : bgHover,
+              },
+              position: "relative",
+              overflow: "hidden",
             }}
           >
-            {section.label}
-          </Typography>
-        )}
-      </Box>
-    ));
-  };
+            {/* Active indicator strip */}
+            {active && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: 0,
+                  top: "20%",
+                  height: "60%",
+                  width: 3,
+                  backgroundColor: "#ff0000",
+                  borderRadius: "0 2px 2px 0",
+                }}
+              />
+            )}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                ml: active && isSidebarExpanded ? 0 : 0,
+              }}
+            >
+              {React.cloneElement(section.icon, {
+                sx: {
+                  fontSize: "22px",
+                  color: active ? iconActiveColor : iconColor,
+                  opacity: active ? 1 : 0.75,
+                },
+              })}
+            </Box>
+            {isSidebarExpanded && (
+              <Typography
+                sx={{
+                  fontSize: "13px",
+                  fontWeight: active ? 600 : 400,
+                  color: active ? textActiveColor : textColor,
+                  opacity: active ? 1 : 0.75,
+                  lineHeight: 1,
+                }}
+              >
+                {section.label}
+              </Typography>
+            )}
+          </Box>
+        );
+
+        return !isSidebarExpanded ? (
+          <Tooltip key={section.path} title={section.label} placement="right">
+            {item}
+          </Tooltip>
+        ) : (
+          item
+        );
+      })}
+    </>
+  );
 
   return (
     <Drawer
       sx={{
-        width: isMobile ? 80 : isSidebarExpanded ? 240 : 80,
+        width: isMobile ? 232 : isSidebarExpanded ? 232 : 72,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
-          width: isSidebarExpanded ? 240 : 80,
+          width: isMobile ? 232 : isSidebarExpanded ? 232 : 72,
           boxSizing: "border-box",
           position: "fixed",
           top: 64,
           height: "calc(100vh - 64px)",
-          backgroundColor: "#0F0F0F",
+          backgroundColor: isDark ? "#0f0f0f" : "#ffffff",
+          borderRight: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.07)",
+          overflowX: "hidden",
+          transition: theme.transitions.create("width", {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
         },
       }}
-      variant="permanent"
+      variant={isMobile ? "temporary" : "permanent"}
+      open={isMobile ? isSidebarExpanded : true}
+      onClose={onClose}
       anchor="left"
     >
-      <Box sx={{ padding: 2 }}>
-        {/* Render Home, Shorts, Subscriptions */}
+      <Box
+        sx={{
+          px: isSidebarExpanded ? 1.5 : 0.75,
+          py: 1.5,
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflowY: "auto",
+          overflowX: "hidden",
+          "&::-webkit-scrollbar": { width: 4 },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            borderRadius: 4,
+          },
+        }}
+      >
         {renderSection(sections)}
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Render History, Playlist, Watch Later, Liked Videos */}
-        {renderSection(moreSections)}
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Render Trending, Music, Gaming, Sports */}
-        {renderSection(trendingSections)}
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Render Settings, Feedback */}
+        <Divider sx={{ my: 1.5 }} />
+        {renderSection(moreSections, "Library")}
+        <Divider sx={{ my: 1.5 }} />
+        {renderSection(trendingSections, "Explore")}
+        <Divider sx={{ my: 1.5 }} />
         {renderSection(lastSections)}
       </Box>
     </Drawer>

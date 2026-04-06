@@ -1,5 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
-  color-scheme: light dark;
-  color: #111;
-  background-color: #0f0f0f;
+  --yt-red: #ff0000;
+  --yt-red-hover: #cc0000;
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #161616;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #222222;
+  --bg-surface: #212121;
+  --text-primary: #f1f1f1;
+  --text-secondary: #aaaaaa;
+  --text-muted: #717171;
+  --border-subtle: #2d2d2d;
+  --border-medium: #3f3f3f;
+  --accent-blue: #3ea6ff;
+  --scrollbar-thumb: #3f3f3f;
+  --scrollbar-thumb-hover: #555;
+  color-scheme: dark;
+}
+
+html, body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+/* Smooth transitions globally */
+* { transition-property: background-color, border-color, color, box-shadow, transform, opacity; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+
+/* Links */
+a { color: inherit; text-decoration: none; }
+
+/* Focus ring */
+:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Shimmer animation for loading skeletons */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.3s ease forwards; }
+
+/* Login page gradient animation */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.login-bg {
+  background: linear-gradient(-45deg, #0f0f0f, #1a0000, #0f0f0f, #001a0f);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

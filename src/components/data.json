@@ -47,5 +47,19 @@
     "link": "https://www.youtube.com/watch?v=k8bXbFBItgI&list=RDGMEMQ1dJ7wXfLlqCjwV0xfSNbA&start_radio=1&rv=HdBXYbqgXyg",
     "thumbnail": "https://img.youtube.com/vi/k8bXbFBItgI/hqdefault.jpg",
     "subTitle": "Chill Music"
+  },
+  {
+    "id": "UzyTh7yUOls",
+    "title": "Tumhare Saath | Lofi Chillout",
+    "link": "https://www.youtube.com/watch?v=UzyTh7yUOls&list=RD0enmMyV1Q48&index=7",
+    "thumbnail": "https://img.youtube.com/vi/UzyTh7yUOls/maxresdefault.jpg",
+    "subTitle": "Music Release"
+  },
+  {
+    "id": "0enmMyV1Q48",
+    "title": "Jaan Wandiyo | Heartfelt Melodies",
+    "link": "https://www.youtube.com/watch?v=0enmMyV1Q48&list=RD0enmMyV1Q48&start_radio=1",
+    "thumbnail": "https://img.youtube.com/vi/0enmMyV1Q48/maxresdefault.jpg",
+    "subTitle": "Lofi Music"
   }
 ]

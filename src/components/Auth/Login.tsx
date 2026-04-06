@@ -2,12 +2,43 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Box, TextField, Button, Typography } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  Alert,
+  Collapse,
+} from "@mui/material";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import Logo from "../../assets/youtube-svgrepo-com.svg";
+
+const inputSx = {
+  "& .MuiOutlinedInput-root": {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: "12px",
+    color: "#f1f1f1",
+    "& fieldset": { borderColor: "rgba(255,255,255,0.12)" },
+    "&:hover fieldset": { borderColor: "rgba(255,255,255,0.25)" },
+    "&.Mui-focused fieldset": { borderColor: "#ff0000", borderWidth: "1.5px" },
+  },
+  "& .MuiInputLabel-root": { color: "#aaa" },
+  "& .MuiInputLabel-root.Mui-focused": { color: "#ff0000" },
+  "& .MuiInputAdornment-root svg": { color: "#888" },
+};
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,66 +46,206 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     const success = await auth.login(username, password);
+    setLoading(false);
     if (success) {
-      // Redirect to the original requested page or home
       const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     } else {
-      setError("Invalid username or password");
+      setError("Invalid username or password. Please try again.");
     }
   };
 
   return (
     <Box
+      className="login-bg"
       display="flex"
       justifyContent="center"
       alignItems="center"
       minHeight="100vh"
-      bgcolor="#121212"
+      position="relative"
+      overflow="hidden"
     >
-      <Box width={300} p={4} boxShadow={3} bgcolor="#1e1e1e" borderRadius={2}>
-        <Typography variant="h5" gutterBottom align="center" color="white">
-          Login
-        </Typography>
-        {error && (
-          <Typography color="error" align="center" gutterBottom>
-            {error}
-          </Typography>
-        )}
-        <form onSubmit={handleSubmit}>
-          <TextField
-            label="Username"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            InputLabelProps={{ style: { color: "white" } }}
-            InputProps={{ style: { color: "white" } }}
-            autoComplete="username"
-          />
-          <TextField
-            label="Password"
-            type="password"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            InputLabelProps={{ style: { color: "white" } }}
-            InputProps={{ style: { color: "white" } }}
-            autoComplete="current-password"
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            style={{ marginTop: 16 }}
+      {/* Decorative blobs */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: 400,
+          height: 400,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,0,0,0.12) 0%, transparent 70%)",
+          top: "-10%",
+          left: "-10%",
+          filter: "blur(60px)",
+          pointerEvents: "none",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          width: 300,
+          height: 300,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,0,0,0.08) 0%, transparent 70%)",
+          bottom: "5%",
+          right: "-5%",
+          filter: "blur(60px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Card */}
+      <Box
+        className="fade-in"
+        sx={{
+          width: { xs: "90%", sm: 420 },
+          p: { xs: 3.5, sm: 5 },
+          background: "rgba(22,22,22,0.85)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "20px",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {/* Logo */}
+        <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              mb: 2,
+            }}
           >
-            Login
-          </Button>
+            <img src={Logo} alt="TomTube" style={{ height: 36 }} />
+            <Typography
+              sx={{
+                fontSize: "24px",
+                fontWeight: 800,
+                letterSpacing: "-0.5px",
+                color: "#f1f1f1",
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              TomTube
+            </Typography>
+          </Box>
+          <Typography sx={{ color: "#aaa", fontSize: "14px", textAlign: "center" }}>
+            Sign in to continue watching
+          </Typography>
+        </Box>
+
+        {/* Error */}
+        <Collapse in={!!error}>
+          <Alert
+            severity="error"
+            sx={{
+              mb: 2.5,
+              backgroundColor: "rgba(255,0,0,0.12)",
+              color: "#ff6b6b",
+              border: "1px solid rgba(255,0,0,0.25)",
+              borderRadius: "10px",
+              "& .MuiAlert-icon": { color: "#ff6b6b" },
+            }}
+          >
+            {error}
+          </Alert>
+        </Collapse>
+
+        <form onSubmit={handleSubmit}>
+          <Box display="flex" flexDirection="column" gap={2.5}>
+            <TextField
+              label="Username"
+              variant="outlined"
+              fullWidth
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              sx={inputSx}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PersonOutlineIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              variant="outlined"
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              sx={inputSx}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlinedIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                      sx={{ color: "#888", "&:hover": { color: "#aaa" } }}
+                    >
+                      {showPassword ? (
+                        <VisibilityOffOutlinedIcon fontSize="small" />
+                      ) : (
+                        <VisibilityOutlinedIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={loading || !username || !password}
+              sx={{
+                mt: 1,
+                py: 1.5,
+                borderRadius: "12px",
+                background: loading
+                  ? "rgba(255,0,0,0.4)"
+                  : "linear-gradient(135deg, #ff0000 0%, #cc0000 100%)",
+                color: "#fff",
+                fontSize: "15px",
+                fontWeight: 700,
+                textTransform: "none",
+                letterSpacing: "0.3px",
+                boxShadow: "0 4px 20px rgba(255,0,0,0.3)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #e60000 0%, #b30000 100%)",
+                  boxShadow: "0 6px 28px rgba(255,0,0,0.45)",
+                  transform: "translateY(-1px)",
+                },
+                "&:active": { transform: "translateY(0)" },
+                "&.Mui-disabled": {
+                  background: "rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.3)",
+                  boxShadow: "none",
+                },
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={20} sx={{ color: "#fff" }} />
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </Box>
         </form>
       </Box>
     </Box>
