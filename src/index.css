@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -8,29 +8,19 @@
 
 :root {
   --yt-red: #ff0000;
-  --yt-red-hover: #cc0000;
   --bg-primary: #0f0f0f;
-  --bg-secondary: #161616;
-  --bg-card: #1a1a1a;
-  --bg-card-hover: #222222;
-  --bg-surface: #212121;
-  --text-primary: #f1f1f1;
+  --bg-secondary: #0a0a0a;
+  --text-primary: #ffffff;
   --text-secondary: #aaaaaa;
-  --text-muted: #717171;
-  --border-subtle: #2d2d2d;
-  --border-medium: #3f3f3f;
-  --accent-blue: #3ea6ff;
-  --scrollbar-thumb: #3f3f3f;
-  --scrollbar-thumb-hover: #555;
-  color-scheme: dark;
+  --glass-bg: rgba(15, 15, 15, 0.7);
 }
 
 html, body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px; /* Slightly smaller base font for density */
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -38,10 +28,6 @@ html, body {
 
 #root {
   min-height: 100vh;
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-  text-align: left;
 }
 
 /* Custom Scrollbar */

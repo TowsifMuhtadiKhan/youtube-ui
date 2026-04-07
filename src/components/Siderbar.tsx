@@ -7,6 +7,7 @@ import {
   useTheme,
   useMediaQuery,
   Tooltip,
+  Avatar,
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -186,52 +187,54 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
 
   return (
     <Drawer
+      variant={isMobile ? "temporary" : "permanent"}
+      open={isSidebarExpanded}
+      onClose={onClose}
       sx={{
-        width: isMobile ? 232 : isSidebarExpanded ? 232 : 72,
+        width: isSidebarExpanded ? 200 : 72,
         flexShrink: 0,
+        zIndex: theme.zIndex.drawer + 2,
         "& .MuiDrawer-paper": {
-          width: isMobile ? 232 : isSidebarExpanded ? 232 : 72,
+          width: isSidebarExpanded ? 200 : 72,
           boxSizing: "border-box",
-          position: "fixed",
-          top: 64,
-          height: "calc(100vh - 64px)",
-          backgroundColor: isDark ? "#0f0f0f" : "#ffffff",
-          borderRight: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.07)",
+          backgroundColor: isDark ? "rgba(8,8,8,0.7)" : "rgba(255,255,255,0.7)",
+          backdropFilter: "blur(20px)",
+          border: "none",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           overflowX: "hidden",
-          transition: theme.transitions.create("width", {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
+          height: isMobile ? "calc(100vh - 68px)" : "calc(100vh - 92px)",
+          top: isMobile ? 68 : 92,
+          ...(!isMobile && {
+            left: 16,
+            borderRadius: "24px",
+            boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "none",
+            border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.05)",
           }),
         },
       }}
-      variant={isMobile ? "temporary" : "permanent"}
-      open={isMobile ? isSidebarExpanded : true}
-      onClose={onClose}
-      anchor="left"
     >
-      <Box
-        sx={{
-          px: isSidebarExpanded ? 1.5 : 0.75,
-          py: 1.5,
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          overflowY: "auto",
-          overflowX: "hidden",
-          "&::-webkit-scrollbar": { width: 4 },
-          "&::-webkit-scrollbar-thumb": {
-            backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-            borderRadius: 4,
-          },
-        }}
-      >
+      <Box sx={{ overflow: "auto", height: "100%", pt: !isMobile ? 2 : 8, px: 1.5 }}>
+        {/* User Profile Section */}
+
+
         {renderSection(sections)}
-        <Divider sx={{ my: 1.5 }} />
-        {renderSection(moreSections, "Library")}
-        <Divider sx={{ my: 1.5 }} />
+        <Divider sx={{ my: 2, mx: 1.5, opacity: 0.1 }} />
+        {renderSection(moreSections, "Your Library")}
+        <Divider sx={{ my: 2, mx: 1.5, opacity: 0.1 }} />
         {renderSection(trendingSections, "Explore")}
-        <Divider sx={{ my: 1.5 }} />
+        <Divider sx={{ my: 2, mx: 1.5, opacity: 0.1 }} />
         {renderSection(lastSections)}
+
+        {isSidebarExpanded && (
+          <Box sx={{ px: 2, pb: 4, mt: 4 }}>
+            <Typography variant="caption" sx={{ color: "text.secondary", opacity: 0.5, display: "block", mb: 1 }}>
+              © 2026 Towsif Muhtadi Khan
+            </Typography>
+            <Typography variant="caption" sx={{ color: "text.secondary", opacity: 0.4 }}>
+              v1.0.1
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Drawer>
   );

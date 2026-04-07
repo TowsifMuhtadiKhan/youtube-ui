@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+// Removed ReactPlayer for stability as requested
 import {
   Box,
   Button,
@@ -7,830 +8,714 @@ import {
   useMediaQuery,
   useTheme,
   Chip,
-  Divider,
-  Switch,
-  FormControlLabel,
   Avatar,
+  CircularProgress,
+  TextField,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { useNavigate, useParams } from "react-router-dom";
-import videoData from "./data.json";
-import SkipNextIcon from "@mui/icons-material/SkipNext";
-import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { fetchPopularVideos, fetchVideoDetails, fetchSearchResults } from "../api/youtube";
+import type { YouTubeVideoInfo } from "../api/youtube";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
-import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import ScreenRotationIcon from "@mui/icons-material/ScreenRotation";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import ShareIcon from "@mui/icons-material/Share";
-import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
-import YouTubeIcon from "@mui/icons-material/YouTube";
+import DownloadIcon from "@mui/icons-material/Download";
+import SendIcon from "@mui/icons-material/Send";
+import SortIcon from "@mui/icons-material/Sort";
 
 interface VideoPageProps {
   isSidebarExpanded: boolean;
 }
 
-const PLAYLIST_ROW_HEIGHT = 88;
+const dummyComments = [
+  { id: 1, user: "Alex Rivers", avatar: "A", text: "This is absolutely incredible! The production quality is top notch. I love how you balanced the technical details with practical examples.", likes: 245, time: "2 hours ago", replies: 3 },
+  { id: 2, user: "Sarah Chen", avatar: "S", text: "I've been waiting for this episode for so long. Did not disappoint! The explanation of the new architecture was very clear.", likes: 128, time: "5 hours ago", replies: 1 },
+  { id: 3, user: "Marcus Wright", avatar: "M", text: "The cinematography in the opening scene is breathtaking. What camera was used for those slow-motion shots?", likes: 89, time: "1 day ago", replies: 0 },
+];
 
 const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down(1100)); // Switch to stack layout earlier to prevent overlap
   const isDark = theme.palette.mode === "dark";
 
-  const sidebarWidth = isMobile ? 0 : isSidebarExpanded ? 232 : 72;
-  const baseBg = isDark ? "#080808" : "#f0f0f0";
-  // Panels use semi-transparent backgrounds so ambient color bleeds through
-  const panelBg = isDark ? "rgba(10,10,10,0.72)" : "rgba(248,248,248,0.75)";
-  const cardHoverBg = isDark ? "rgba(40,40,40,0.85)" : "rgba(230,230,230,0.85)";
-  const rightPanelBg = isDark ? "rgba(15,15,15,0.80)" : "rgba(240,240,240,0.80)";
-  const headerBg = isDark ? "rgba(12,12,12,0.85)" : "rgba(235,235,235,0.85)";
+  // Gap Fix: Account for Sidebar position (left: 16) and width (200/72)
+  const sidebarOffset = isMobile ? 0 : 16;
+  const sidebarWidthValue = isMobile ? 0 : isSidebarExpanded ? 200 : 72;
+  const contentGap = isMobile ? 0 : 12; // Reduced gap
+  const totalMarginLeft = sidebarOffset + sidebarWidthValue + contentGap;
+  const headerHeight = 92; // Header (fixed) height including padding
 
-  const textColor = isDark ? "#f1f1f1" : "#0f0f0f";
+  // Design Tokens
+  const baseBg = isDark ? "#0a0a0a" : "#f8f9fa";
+  const glassBg = isDark ? "rgba(20, 20, 20, 0.65)" : "rgba(255, 255, 255, 0.75)";
+  const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)";
+  const accentRed = "#ff0000";
+  const textColor = isDark ? "#ffffff" : "#0f0f0f";
   const metaColor = isDark ? "#aaaaaa" : "#606060";
-  const borderColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
-  const activeRowBg = isDark ? "rgba(255,0,0,0.12)" : "rgba(255,0,0,0.06)";
-  const btnBg = isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.06)";
-  const btnHoverBg = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)";
+  const cardHover = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)";
 
-  const selectedVideo = videoData.find((v) => v.id === id);
-  const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<YouTubeVideoInfo | null>(null);
+  const [playlist, setPlaylist] = useState<YouTubeVideoInfo[]>([]);
+  const [seriesPlaylist, setSeriesPlaylist] = useState<YouTubeVideoInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isRotated, setIsRotated] = useState(false);
+  const [liked, setLiked] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadVideoAndPlaylist = async () => {
+      if (!id) return;
+      setLoading(true);
+      window.scrollTo(0, 0);
+      
+      const video = await fetchVideoDetails(id);
+      setSelectedVideo(video);
+
+      if (video) {
+        const lowerTitle = video.title.toLowerCase();
+        const isSeries = /episode|ep\s|part\s|season|madam\ssir/i.test(lowerTitle);
+        
+        if (isSeries) {
+          const parts = video.title.split(" ");
+          const seriesName = parts.slice(0, Math.min(3, parts.length)).join(" ");
+          
+          const [seriesResults, trendingResults] = await Promise.all([
+            fetchSearchResults(seriesName, 20),
+            fetchPopularVideos(12)
+          ]);
+
+          const getEpNum = (title: string) => {
+            const match = title.match(/(?:ep|episode|part|season)\s*(\d+)/i);
+            return match ? parseInt(match[1], 10) : 9999;
+          };
+
+          const sortedSeries = seriesResults.sort((a, b) => getEpNum(a.title) - getEpNum(b.title));
+          setSeriesPlaylist(sortedSeries.filter(v => v.id !== id));
+          setPlaylist(trendingResults.filter(v => v.id !== id));
+        } else {
+          const trendingResults = await fetchPopularVideos(15);
+          setSeriesPlaylist([]);
+          setPlaylist(trendingResults.filter(v => v.id !== id));
+        }
+      }
+      setLoading(false);
+    };
+    loadVideoAndPlaylist();
+  }, [id]);
 
   const toggleFullscreen = async () => {
     if (!playerContainerRef.current) return;
-
     if (!isFullscreen) {
-      // 1. Try Browser Fullscreen
-      try {
-        await playerContainerRef.current.requestFullscreen();
-      } catch (err) {
-        console.warn("Native fullscreen denied, using hybrid fallback.");
-      }
-
-      // 2. Always set our state (triggers our CSS "Fake" fullscreen fallback)
+      try { await playerContainerRef.current.requestFullscreen(); } catch (err) { /* ignore */ }
       setIsFullscreen(true);
-
-      // 3. Try Orientation Lock
       if (isMobile) {
-        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch {
-          try { await (screen.orientation as any).lock("landscape"); } catch { /* ignore */ }
-        }
+        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch { /* ignore */ }
       }
     } else {
-      // Exit everything
       if (document.fullscreenElement) {
         try { await document.exitFullscreen(); } catch { /* ignore */ }
       }
       setIsFullscreen(false);
       setIsRotated(false);
-
       if (isMobile) {
-        try { await ScreenOrientation.unlock(); } catch {
-          try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
-        }
+        try { await ScreenOrientation.unlock(); } catch { /* ignore */ }
       }
     }
   };
 
-  useEffect(() => {
-    const handler = () => {
-      // Sync our state if they exit via system/escape
-      if (!document.fullscreenElement && isFullscreen) {
-        // If we are in "fake" fullscreen and not "real", don't auto-exit unless they hit our UI
-      }
-    };
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, [isFullscreen]);
-
-  // Mobile: fullscreen + rotate 90° for landscape viewing
   const toggleRotate = async () => {
     if (!playerContainerRef.current) return;
-
     if (!isRotated) {
-      // Force Fullscreen first
-      if (!isFullscreen) await toggleFullscreen();
-
-      // Force logic for rotation
       if (isMobile) {
-        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch {
-          try { await (screen.orientation as any).lock("landscape"); } catch { /* ignore */ }
-        }
-        setIsRotated(true);
+        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch { /* ignore */ }
       }
+      setIsRotated(true);
     } else {
-      // Back to normal
       setIsRotated(false);
       if (isMobile) {
-        try { await ScreenOrientation.unlock(); } catch {
-          try { (screen.orientation as any).unlock(); } catch { /* ignore */ }
-        }
+        try { await ScreenOrientation.unlock(); } catch { /* ignore */ }
       }
-      // Optional: keep fullscreen but portrait? Usually they want both off.
-      if (isFullscreen) await toggleFullscreen();
     }
   };
 
-
+  if (loading) {
+    return (
+      <Box sx={{ marginLeft: `${totalMarginLeft}px`, marginTop: `${headerHeight}px`, minHeight: "calc(100vh - 92px)", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: baseBg }}>
+        <CircularProgress sx={{ color: accentRed }} />
+      </Box>
+    );
+  }
 
   if (!selectedVideo) {
     return (
-      <Box
-        sx={{
-          marginLeft: `${sidebarWidth}px`,
-          marginTop: "64px",
-          minHeight: "calc(100vh - 64px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: baseBg,
-        }}
-      >
-        <Box textAlign="center">
-          <PlayCircleOutlineIcon sx={{ fontSize: 72, color: "#444", mb: 2 }} />
-          <Typography sx={{ color: metaColor, fontSize: "18px", fontWeight: 600 }}>
-            Video not found
-          </Typography>
+      <Box sx={{ marginLeft: `${totalMarginLeft}px`, marginTop: `${headerHeight}px`, minHeight: "calc(100vh - 92px)", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: baseBg }}>
+        <Box textAlign="center" className="fade-in">
+          <PlayCircleOutlineIcon sx={{ fontSize: 72, color: metaColor, mb: 2, opacity: 0.5 }} />
+          <Typography variant="h5" sx={{ color: metaColor, fontWeight: 700 }}>Video not found</Typography>
+          <Button onClick={() => navigate("/")} sx={{ mt: 2, color: accentRed }}>Back to Home</Button>
         </Box>
       </Box>
     );
   }
 
-  const videoIndex = videoData.findIndex((v) => v.id === id);
-
-  const handlePrevious = () => {
-    if (videoIndex > 0) navigate(`/video/${videoData[videoIndex - 1].id}`);
+  // Function to extract video ID for YouTube Embed
+  const getEmbedId = (video: YouTubeVideoInfo) => {
+    const rawUrl = video.link || `https://www.youtube.com/watch?v=${id}`;
+    if (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be")) {
+      try {
+        const url = new URL(rawUrl);
+        const v = url.searchParams.get("v");
+        return v || id;
+      } catch (e) {
+        return id;
+      }
+    }
+    return id;
   };
-  const handleNext = () => {
-    if (videoIndex < videoData.length - 1)
-      navigate(`/video/${videoData[videoIndex + 1].id}`);
-  };
-
-  useEffect(() => {
-    // Only used to trigger next video if autoplay is manually toggled on
-  }, [id, autoPlayEnabled]);
 
   return (
     <Box
       sx={{
-        marginLeft: `${sidebarWidth}px`,
-        marginTop: "64px",
-        /* Global single scroll */
-        minHeight: "calc(100vh - 64px)",
-        backgroundColor: baseBg,
-        transition: "margin-left 0.25s ease, background-color 0.3s ease",
+        marginLeft: `${totalMarginLeft}px`,
+        marginTop: `${headerHeight}px`,
+        paddingRight: { xs: 0, md: "24px" },
+        minHeight: "calc(100vh - 92px)",
+        backgroundColor: "transparent",
+        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
         position: "relative",
+        gap: 3,
       }}
     >
-      {/* ── GLOBAL ambient thumbnail layer — Fixed to cover viewport ── */}
+      {/* ── CINEMATIC AMBIENT BACKGROUND ── */}
       <Box
         sx={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `url(${selectedVideo.thumbnail})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(80px) saturate(1.6) brightness(0.5)",
-          transform: "scale(1.15)",
-          opacity: isDark ? 0.55 : 0.28,
+          inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-        }}
-      />
-      {/* Dark vignette overlay */}
-      <Box
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: isDark
-            ? "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 100%)"
-            : "radial-gradient(ellipse at center, transparent 30%, rgba(255,255,255,0.45) 100%)",
-          zIndex: 0,
-          pointerEvents: "none",
-        }}
-      />
-      {/* ─────────────────── LEFT: Player + Details ─────────────────── */}
-      <Box
-        sx={{
-          flex: isMobile ? "none" : "1 1 0",
-          display: "flex",
-          flexDirection: "column",
-          width: isMobile ? "100%" : "auto",
-          height: "auto",
-          /* Semi-transparent so global ambient shows through */
-          backgroundColor: panelBg,
-          backdropFilter: "blur(2px)",
-          WebkitBackdropFilter: "blur(2px)",
-          zIndex: 1,
+          overflow: "hidden",
         }}
       >
         <Box
+          sx={{
+            position: "absolute",
+            inset: "-10%",
+            backgroundImage: `url(${selectedVideo.thumbnail})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(120px) saturate(2) brightness(0.4)",
+            transform: "scale(1.1)",
+            opacity: isDark ? 0.45 : 0.25,
+          }}
+        />
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: isDark
+              ? "radial-gradient(circle at 30% 30%, rgba(255,0,0,0.1), transparent 70%), linear-gradient(180deg, rgba(10,10,10,0.4) 0%, rgba(10,10,10,1) 90%)"
+              : "radial-gradient(circle at 30% 30%, rgba(255,0,0,0.05), transparent 70%), linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(248,249,250,1) 90%)",
+          }}
+        />
+      </Box>
+
+      {/* ── LEFT COLUMN: PLAYER + INFO ── */}
+      <Box
+        sx={{
+          flex: isMobile ? "none" : "1 1 0",
+          zIndex: 1,
+          pt: { xs: 0, md: 1 },
+          pb: { xs: 4, md: 6 },
+          maxWidth: isMobile ? "100%" : `calc(100vw - 440px - ${totalMarginLeft + 48}px)`,
+          minWidth: 0,
+        }}
+      >
+        {/* Video Player Container */}
+        <Box
           ref={playerContainerRef}
           sx={{
-            position: "relative",
             backgroundColor: "#000",
-            flexShrink: 0,
-            mt: { xs: 0, md: 2 },
-            mx: { xs: 0, sm: 2, md: 4 },
-            borderRadius: isFullscreen || isRotated ? 0 : { xs: 0, md: "16px" },
             overflow: "hidden",
-            boxShadow: isFullscreen || isRotated ? "none" : "0 12px 48px rgba(0,0,0,0.5)",
-            zIndex: isFullscreen || isRotated ? 9999 : 10,
-            /* Hybrid Fullscreen Fallback (Fixed positioning if native fails) */
-            ...(isFullscreen && !isRotated && {
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: "100vw",
-              height: "100vh",
-              margin: 0,
-              borderRadius: 0,
-              zIndex: 99999, // Over all else
-            }),
-            /* When rotated on mobile, use CSS transform to simulate landscape */
-            ...(isRotated && {
-              transform: "rotate(90deg)",
-              transformOrigin: "center center",
-              width: "100vh",
-              height: "100vw",
+            boxShadow: (isFullscreen || isRotated) ? "none" : (isDark ? "0 25px 70px rgba(0,0,0,0.6)" : "none"),
+            mb: { xs: 2.5, md: 4 },
+            transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+            "&:hover .player-overlay": { opacity: 1 },
+            
+            // Layout states
+            ...(isRotated ? {
               position: "fixed",
               top: "50%",
               left: "50%",
-              marginTop: "-50vw",
-              marginLeft: "-50vh",
+              width: "100vh",
+              height: "100vw",
+              transform: "translate(-50%, -50%) rotate(90deg)",
+              transformOrigin: "center center",
+              margin: 0,
               zIndex: 99999,
-            }),
-            "&:hover .fullscreen-btn": { opacity: "1 !important" },
-          }}
-        >
-          <Box
-            sx={{
+              borderRadius: 0,
+            } : isFullscreen ? {
+              position: "fixed",
+              inset: 0,
+              width: "100vw",
+              height: "100vh",
+              margin: 0,
+              zIndex: 99999,
+              borderRadius: 0,
+            } : {
               position: "relative",
               width: "100%",
-              paddingTop: isFullscreen || isRotated ? 0 : (isMobile ? "65%" : "56.25%"),
-              height: isFullscreen || isRotated ? "100vh" : 0,
-              overflow: "hidden",
+              height: "auto",
+              aspectRatio: "16/9",
+              borderRadius: { xs: 0, md: "24px" },
+              zIndex: 10,
+            }),
+          }}
+        >
+          <iframe
+            src={`https://www.youtube.com/embed/${getEmbedId(selectedVideo)}?rel=0&autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3&showinfo=0&color=white&mute=1`}
+            title={selectedVideo.title}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            style={{ width: "100%", height: "100%", border: "none", zIndex: 1 }}
+          />
+          
+          {/* Top Masking Layer to Hide YouTube Branding/Options - Desktop Only */}
+          {!isMobile && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 48, // Shorter to be less obstructive
+                // Glass mask: subtle blur hides the text/branding without a solid shadow bar
+                background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.3)",
+                backdropFilter: "blur(40px)",
+                WebkitBackdropFilter: "blur(40px)",
+                zIndex: 100, 
+                pointerEvents: "none",
+              }}
+            />
+          )}
+          
+          <Box
+            className="player-overlay"
+            sx={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              pointerEvents: "none",
+              opacity: 0,
+              transition: "opacity 0.3s ease",
+              background: "linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.4) 100%)",
             }}
           >
-            <iframe
-              src={`https://www.youtube.com/embed/${id}?rel=0&autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3&showinfo=0&color=white&fs=0`}
-              title={selectedVideo.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-presentation"
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                border: "none",
-                display: "block",
-              }}
-            />
-            {/* Block clicks on top-left title/channel text */}
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "65%",
-                height: "52px",
-                zIndex: 20,
-                cursor: "default",
-              }}
-            />
-            {/* Solid overlay bar at the bottom — hides "More Videos" + YouTube logo
-                without affecting iframe height or settings popup */}
-            <Box
-              sx={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                width: "100%",
-                height: "38px",
-                background: "#000",
-                zIndex: 20,
-              }}
-            />
-            {/* Dedicated Exit button floating inside the video, only visible during fullscreen/rotate */}
-            {(isFullscreen || isRotated) && (
-              <IconButton
-                onClick={() => {
-                  if (isRotated) toggleRotate();
-                  else if (isFullscreen) toggleFullscreen();
-                }}
-                sx={{
-                  position: "absolute",
-                  top: 16,
-                  right: 16,
-                  zIndex: 30,
-                  backgroundColor: "rgba(0,0,0,0.6)",
-                  backdropFilter: "blur(4px)",
-                  color: "#fff",
-                  "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" },
-                  width: 44,
-                  height: 44,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-                }}
-              >
-                <FullscreenExitIcon />
+            <Box sx={{ position: "absolute", top: 16, right: 16, pointerEvents: "auto", display: "flex", gap: 1 }}>
+              {isMobile && (
+                 <IconButton onClick={toggleRotate} sx={{ color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" } }}>
+                    <ScreenRotationIcon />
+                 </IconButton>
+              )}
+              <IconButton onClick={toggleFullscreen} sx={{ color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" } }}>
+                {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
               </IconButton>
-            )}
+            </Box>
           </Box>
         </Box>
 
-        {/* ── Details ── */}
-        <Box sx={{ px: { xs: 2, md: 3 }, py: 2.5, flex: 1 }}>
-          {/* Title row with fullscreen button */}
-          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1, mb: 1.5 }}>
-            <Typography
-              sx={{
-                color: textColor,
-                fontWeight: 800,
-                fontSize: { xs: "17px", md: "22px" },
-                lineHeight: 1.35,
-                letterSpacing: "-0.4px",
-                flex: 1,
-              }}
-            >
-              {selectedVideo.title}
-            </Typography>
-            <IconButton
-              onClick={toggleFullscreen}
-              sx={{
-                color: textColor,
-                backgroundColor: btnBg,
-                "&:hover": { backgroundColor: btnHoverBg },
-                width: isMobile ? 44 : 36,
-                height: isMobile ? 44 : 36,
-                flexShrink: 0,
-                mt: 0.5,
-              }}
-            >
-              {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-            </IconButton>
-            {/* Rotate button — mobile only */}
-            {isMobile && (
-              <IconButton
-                onClick={toggleRotate}
-                sx={{
-                  color: isRotated ? "#ff4444" : textColor,
-                  backgroundColor: btnBg,
-                  "&:hover": { backgroundColor: btnHoverBg },
-                  width: 44,
-                  height: 44,
-                  flexShrink: 0,
-                  mt: 0.5,
-                }}
-              >
-                <ScreenRotationIcon />
-              </IconButton>
-            )}
-          </Box>
-
-          {/* Channel + actions row */}
-          <Box
-            display="flex"
-            flexDirection={isMobile ? "column" : "row"}
-            alignItems={isMobile ? "flex-start" : "center"}
-            justifyContent="space-between"
-            gap={2}
-            mb={2.5}
-          >
-            <Box display="flex" alignItems="center" gap={isMobile ? 1 : 1.5}>
-              <Avatar
-                sx={{
-                  width: isMobile ? 34 : 42,
-                  height: isMobile ? 34 : 42,
-                  fontSize: isMobile ? "15px" : "17px",
-                  fontWeight: 700,
-                  background: "linear-gradient(135deg, #ff0000, #cc2200)",
-                  flexShrink: 0,
-                }}
-              >
-                T
-              </Avatar>
-              <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: isMobile ? "14px" : "15px", color: textColor }}>
-                  TomTube Channel
-                </Typography>
-                <Typography sx={{ fontSize: isMobile ? "12px" : "13px", color: metaColor }}>
-                  {videoIndex + 1} of {videoData.length}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Action buttons container */}
-            <Box
-              sx={{
-                width: isMobile ? "100%" : "auto",
-                overflow: "hidden" // Container prevents layout break
-              }}
-            >
-              <Box
-                display="flex"
-                alignItems="center"
-                gap={1}
-                sx={{
-                  pb: isMobile ? 1 : 0,
-                  // Enable horizontal scroll on mobile ONLY
-                  overflowX: isMobile ? "auto" : "visible",
-                  whiteSpace: "nowrap",
-                  // Hide scrollbar but keep functionality
-                  "&::-webkit-scrollbar": { display: "none" },
-                  msOverflowStyle: "none",
-                  scrollbarWidth: "none",
-                }}
-              >
-                {/* Like / Dislike Group */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    backgroundColor: btnBg,
-                    borderRadius: "20px",
-                    overflow: "hidden",
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconButton
-                    size="small"
-                    sx={{
-                      px: 2,
-                      py: 0.8,
-                      borderRadius: 0,
-                      gap: 1,
-                      color: textColor,
-                      "&:hover": { backgroundColor: btnHoverBg },
-                      borderRight: `1px solid ${borderColor}`,
-                    }}
-                  >
-                    <ThumbUpOutlinedIcon sx={{ fontSize: 18 }} />
-                    <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>Like</Typography>
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    sx={{
-                      px: 1.5,
-                      py: 0.8,
-                      borderRadius: 0,
-                      color: textColor,
-                      "&:hover": { backgroundColor: btnHoverBg },
-                    }}
-                  >
-                    <ThumbDownOutlinedIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Box>
-
-                {[
-                  { icon: <ShareIcon sx={{ fontSize: 17 }} />, label: "Share" },
-                  { icon: <BookmarkBorderIcon sx={{ fontSize: 17 }} />, label: "Save" },
-                ].map(({ icon, label }) => (
-                  <IconButton
-                    key={label}
-                    size="small"
-                    sx={{
-                      backgroundColor: btnBg,
-                      borderRadius: "20px",
-                      px: 2,
-                      py: 0.8,
-                      gap: 1,
-                      color: textColor,
-                      height: "36px",
-                      flexShrink: 0,
-                      "&:hover": { backgroundColor: btnHoverBg },
-                    }}
-                  >
-                    {icon}
-                    <Typography sx={{ fontSize: "13px", color: textColor, fontWeight: 600 }}>
-                      {label}
-                    </Typography>
-                  </IconButton>
-                ))}
-              </Box>
-
-              {/* YouTube badge — now fixed below with better spacing */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
-                  borderRadius: "20px",
-                  px: 1.5,
-                  py: 0.5,
-                  mt: 1, // Space from scroll row
-                  border: `1px solid ${borderColor}`,
-                  cursor: "default",
-                  userSelect: "none",
-                  width: "fit-content",
-                }}
-              >
-                <YouTubeIcon sx={{ fontSize: 16, color: "#ff0000" }} />
-                <Typography sx={{ fontSize: "10px", color: metaColor, fontWeight: 700, letterSpacing: "0.2px", textTransform: "uppercase" }}>
-                  Powered by YouTube
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-
-          <Divider sx={{ borderColor, mb: 2.5 }} />
-
-          {/* Description */}
-          <Box
+        {/* Video Info Container */}
+        <Box sx={{ px: { xs: 2, md: 0 }, className: "fade-in" }}>
+          <Typography
             sx={{
-              backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
-              borderRadius: "12px",
-              p: 2.5,
+              fontSize: { xs: "1.2rem", md: "1.7rem" },
+              fontWeight: 800,
+              color: textColor,
+              lineHeight: 1.3,
               mb: 2.5,
+              letterSpacing: "-0.6px",
             }}
           >
-            <Typography sx={{ color: textColor, fontSize: "14px", lineHeight: 1.75 }}>
-              {selectedVideo.subTitle}
-            </Typography>
-          </Box>
+            {selectedVideo.title}
+          </Typography>
 
-          {/* Navigation + autoplay */}
+          {/* Channel & Main Actions */}
           <Box
             sx={{
               display: "flex",
-              alignItems: "center",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "stretch", sm: "center" },
               justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: 1.5,
-              pb: 2,
+              gap: 2.5,
+              mb: 4,
             }}
           >
-            <Box display="flex" gap={1}>
-              {[
-                {
-                  label: "Previous",
-                  icon: <SkipPreviousIcon />,
-                  disabled: videoIndex === 0,
-                  action: handlePrevious,
-                  position: "start" as const,
-                },
-                {
-                  label: "Next",
-                  icon: <SkipNextIcon />,
-                  disabled: videoIndex === videoData.length - 1,
-                  action: handleNext,
-                  position: "end" as const,
-                },
-              ].map(({ label, icon, disabled, action, position }) => (
-                <Button
-                  key={label}
-                  variant="outlined"
-                  size="small"
-                  disabled={disabled}
-                  onClick={action}
-                  startIcon={position === "start" ? icon : undefined}
-                  endIcon={position === "end" ? icon : undefined}
-                  sx={{
-                    borderRadius: "20px",
-                    textTransform: "none",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    borderColor,
-                    color: textColor,
-                    backgroundColor: btnBg,
-                    "&:hover": {
-                      borderColor: isDark ? "#888" : "#555",
-                      backgroundColor: btnHoverBg,
-                    },
-                    "&.Mui-disabled": {
-                      borderColor,
-                      color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
-                    },
-                  }}
-                >
-                  {label}
-                </Button>
-              ))}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Avatar
+                sx={{
+                  width: 42,
+                  height: 42,
+                  background: "linear-gradient(45deg, #ff0000, #ff5f6d)",
+                  fontWeight: 700,
+                  fontSize: "1.1rem",
+                  boxShadow: isDark ? "0 4px 12px rgba(255,0,0,0.25)" : "none",
+                }}
+              >
+                {selectedVideo.subTitle.charAt(0)}
+              </Avatar>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: "1rem", color: textColor, lineHeight: 1.2 }}>
+                  {selectedVideo.subTitle}
+                </Typography>
+                <Typography sx={{ fontSize: "0.8rem", color: metaColor, fontWeight: 500 }}>
+                  1.24M subscribers
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                sx={{
+                  ml: 1.5,
+                  borderRadius: "24px",
+                  textTransform: "none",
+                  fontWeight: 800,
+                  px: 2.5,
+                  py: 0.6,
+                  fontSize: "0.85rem",
+                  backgroundColor: isDark ? "#fff" : "#000",
+                  color: isDark ? "#000" : "#fff",
+                  "&:hover": { backgroundColor: isDark ? "#eee" : "#222", transform: "translateY(-1px)" },
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Subscribe
+              </Button>
             </Box>
 
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={autoPlayEnabled}
-                  onChange={() => setAutoPlayEnabled(!autoPlayEnabled)}
-                  size="small"
-                  sx={{
-                    "& .MuiSwitch-switchBase.Mui-checked": { color: "#ff0000" },
-                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                      backgroundColor: "#ff0000",
-                    },
-                  }}
-                />
-              }
-              label="Autoplay"
-              labelPlacement="start"
+            <Box
               sx={{
-                color: metaColor,
-                mr: 0,
-                gap: 0.5,
-                "& .MuiFormControlLabel-label": { fontSize: "13px", fontWeight: 500 },
+                display: "flex",
+                gap: 1.5,
+                overflowX: "auto",
+                pb: { xs: 1, sm: 0 },
+                "&::-webkit-scrollbar": { display: "none" },
               }}
-            />
+            >
+               <Box sx={{ display: "flex", backgroundColor: glassBg, borderRadius: "32px", border: `1px solid ${glassBorder}`, overflow: "hidden", backdropFilter: "blur(10px)" }}>
+                  <Button
+                    onClick={() => setLiked(!liked)}
+                    startIcon={liked ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
+                    sx={{ color: textColor, px: 2.5, borderRight: `1px solid ${glassBorder}`, borderRadius: 0, textTransform: "none", fontWeight: 700 }}
+                  >
+                    {liked ? "12K" : "11K"}
+                  </Button>
+                  <IconButton sx={{ color: textColor, px: 2, borderRadius: 0 }}>
+                    <ThumbDownOutlinedIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+               </Box>
+
+               <Button
+                startIcon={<ShareIcon />}
+                sx={{
+                  backgroundColor: glassBg,
+                  borderRadius: "32px",
+                  border: `1px solid ${glassBorder}`,
+                  color: textColor,
+                  px: 2.5,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                Share
+              </Button>
+
+              <Button
+                startIcon={<DownloadIcon />}
+                sx={{
+                  backgroundColor: glassBg,
+                  borderRadius: "32px",
+                  border: `1px solid ${glassBorder}`,
+                  color: textColor,
+                  px: 2.5,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  display: { xs: "none", md: "flex" },
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                Download
+              </Button>
+
+              <IconButton sx={{ backgroundColor: glassBg, border: `1px solid ${glassBorder}`, color: textColor, backdropFilter: "blur(10px)" }}>
+                <MoreVertIcon />
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* Description Glass Card */}
+          <Box
+            sx={{
+              p: 3,
+              backgroundColor: glassBg,
+              borderRadius: "20px",
+              border: `1px solid ${glassBorder}`,
+              backdropFilter: "blur(20px)",
+              mb: 5,
+              transition: "all 0.3s ease",
+              "&:hover": { borderColor: "rgba(255,255,255,0.15)" },
+            }}
+          >
+            <Box sx={{ display: "flex", gap: 2, mb: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+              <Typography sx={{ fontWeight: 800, color: textColor, fontSize: "0.95rem" }}>{selectedVideo.viewCount || "1.2M"} views</Typography>
+              <Typography sx={{ fontWeight: 800, color: textColor, fontSize: "0.95rem" }}>{selectedVideo.publishedAt ? new Date(selectedVideo.publishedAt).toLocaleDateString() : "2 days ago"}</Typography>
+              <Box display="flex" gap={1}>
+                 {["#trending", "#premium", "#tomtube"].map(tag => (
+                   <Typography key={tag} sx={{ color: "#3ea6ff", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", "&:hover": { textDecoration: "underline" } }}>{tag}</Typography>
+                 ))}
+              </Box>
+            </Box>
+            <Typography
+              sx={{
+                fontSize: "1rem",
+                lineHeight: 1.7,
+                color: textColor,
+                whiteSpace: "pre-wrap",
+                opacity: 0.85,
+                fontWeight: 400,
+              }}
+            >
+              {selectedVideo.description || selectedVideo.subTitle + " brings you another high-quality video experience. Optimized for premium viewing. Don't forget to like and subscribe for more amazing content!"}
+            </Typography>
+            <Button sx={{ p: 0, mt: 2, color: textColor, fontWeight: 800, textTransform: "none", opacity: 0.9 }}>Show more</Button>
+          </Box>
+
+          {/* Comments Section */}
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 4, mb: 4 }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, fontSize: "1.2rem" }}>842 Comments</Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: textColor, cursor: "pointer", opacity: 0.8, "&:hover": { opacity: 1 } }}>
+                <SortIcon />
+                <Typography sx={{ fontWeight: 800 }}>Sort by</Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 2.5, mb: 5 }}>
+              <Avatar sx={{ width: 44, height: 44, background: "linear-gradient(135deg, #ff4d4d, #ff0000)", fontWeight: 900 }}>T</Avatar>
+              <Box sx={{ flex: 1 }}>
+                <TextField
+                  fullWidth
+                  variant="standard"
+                  placeholder="Add a comment..."
+                  InputProps={{
+                    disableUnderline: false,
+                    sx: { fontSize: "1rem", pb: 1, fontWeight: 500 }
+                  }}
+                  sx={{ "& .MuiInput-underline:before": { borderColor: glassBorder }, "& .MuiInput-underline:after": { borderColor: "#ff4d4d" } }}
+                />
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.5, gap: 1.5 }}>
+                   <Button size="small" sx={{ textTransform: "none", color: textColor, fontWeight: 700 }}>Cancel</Button>
+                   <Button size="small" variant="contained" disabled sx={{ textTransform: "none", borderRadius: "20px", px: 2, fontWeight: 700 }}>Comment</Button>
+                </Box>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {dummyComments.map((comment) => (
+                <Box key={comment.id} sx={{ display: "flex", gap: 2.5 }}>
+                  <Avatar sx={{ width: 44, height: 44, bgcolor: `hsl(${comment.id * 120}, 65%, 45%)`, boxShadow: "0 4px 10px rgba(0,0,0,0.2)" }}>
+                    {comment.avatar}
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.8 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>@{comment.user.replace(" ", "").toLowerCase()}</Typography>
+                      <Typography sx={{ fontSize: "0.8rem", color: metaColor, fontWeight: 500 }}>{comment.time}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: "1rem", color: textColor, mb: 1.5, lineHeight: 1.6, opacity: 0.9 }}>
+                      {comment.text}
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                        <IconButton size="small" sx={{ p: 0.5, color: textColor }}>
+                          <ThumbUpOutlinedIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                        <Typography sx={{ fontSize: "0.8rem", color: metaColor, fontWeight: 700 }}>{comment.likes}</Typography>
+                      </Box>
+                      <IconButton size="small" sx={{ p: 0.5, color: textColor }}>
+                        <ThumbDownOutlinedIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                      <Typography sx={{ fontSize: "0.85rem", fontWeight: 800, cursor: "pointer", ml: 1, opacity: 0.8, "&:hover": { opacity: 1 } }}>Reply</Typography>
+                    </Box>
+                    {comment.replies > 0 && (
+                       <Button startIcon={<SendIcon sx={{ transform: "rotate(90deg)", fontSize: 14 }} />} sx={{ mt: 1.5, textTransform: "none", fontSize: "0.9rem", fontWeight: 800, color: "#3ea6ff", p: 0 }}>
+                          View {comment.replies} replies
+                       </Button>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
           </Box>
         </Box>
       </Box>
 
-      {/* ─────────────────── RIGHT: Playlist ─────────────────── */}
+      {/* ── RIGHT COLUMN: PLAYLISTS ── */}
       <Box
         sx={{
-          width: isMobile ? "100%" : { md: 420, lg: 480 },
+          width: isMobile ? "100%" : "440px",
           flexShrink: 0,
-          height: "auto",
-          display: "flex",
-          flexDirection: "column",
-          backgroundColor: rightPanelBg,
-          backdropFilter: "blur(2px)",
-          WebkitBackdropFilter: "blur(2px)",
-          borderLeft: isMobile ? "none" : `1px solid ${borderColor}`,
-          borderTop: isMobile ? `1px solid ${borderColor}` : "none",
           zIndex: 1,
+          p: { xs: 2, md: 0 },
+          position: "relative",
         }}
       >
-        {/* Playlist header */}
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            borderBottom: `1px solid ${borderColor}`,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            backgroundColor: headerBg,
-            position: "sticky",
-            top: "64px",
-            zIndex: 5,
-          }}
-        >
-          <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: "16px", color: textColor }}>
-              Up Next
-            </Typography>
-            <Typography sx={{ fontSize: "13px", color: metaColor, mt: 0.25 }}>
-              {videoIndex + 1} / {videoData.length} videos
-            </Typography>
-          </Box>
-          <Chip
-            label="Playlist"
-            size="small"
-            sx={{
-              backgroundColor: "rgba(255,0,0,0.12)",
-              color: "#ff0000",
-              fontSize: "11px",
-              fontWeight: 700,
-              border: "1px solid rgba(255,0,0,0.25)",
+        <Box sx={{ position: "sticky", top: "10px" }}>
+          {/* Controls Hook */}
+          <Box 
+            sx={{ 
+                display: "flex", 
+                justifyContent: "space-between", 
+                alignItems: "center", 
+                mb: 3, 
+                px: 2,
+                py: 1.5,
+                backgroundColor: glassBg,
+                borderRadius: "16px",
+                border: `1px solid ${glassBorder}`,
+                backdropFilter: "blur(10px)",
+                transition: "all 0.3s ease"
             }}
-          />
-        </Box>
-
-        {/* List of videos */}
-        <Box
-          sx={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {videoData.map((video, index) => {
-            const isCurrent = video.id === selectedVideo.id;
-            return (
-              <Box
-                key={video.id}
-                onClick={() => navigate(`/video/${video.id}`)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  px: 1.5,
-                  /* Fixed row height — list NEVER shifts */
-                  height: PLAYLIST_ROW_HEIGHT,
-                  flexShrink: 0,
-                  cursor: "pointer",
-                  backgroundColor: isCurrent ? activeRowBg : "transparent",
-                  borderLeft: isCurrent
-                    ? "3px solid #ff0000"
-                    : "3px solid transparent",
-                  transition: "background-color 0.15s ease",
-                  "&:hover": {
-                    backgroundColor: isCurrent ? activeRowBg : cardHoverBg,
-                  },
-                }}
-              >
-                {/* Fixed-size thumbnail */}
-                <Box
-                  sx={{
-                    flexShrink: 0,
-                    width: 120,
-                    height: 68,
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                    backgroundColor: "#000",
-                    position: "relative",
-                  }}
-                >
-                  <Box
-                    component="img"
-                    src={video.thumbnail}
-                    alt={video.title}
-                    sx={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                  {isCurrent && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        inset: 0,
-                        backgroundColor: "rgba(255,0,0,0.35)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <PlayCircleOutlineIcon sx={{ color: "#fff", fontSize: 24 }} />
-                    </Box>
-                  )}
-                </Box>
-
-                {/* Text */}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    sx={{
-                      fontWeight: isCurrent ? 700 : 500,
-                      fontSize: "13px",
-                      color: isCurrent ? "#ff0000" : textColor,
-                      lineHeight: 1.4,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      mb: 0.4,
-                    }}
-                  >
-                    {video.title}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: metaColor,
-                      fontSize: "12px",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 1,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {video.subTitle}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      color: isDark
-                        ? "rgba(255,255,255,0.2)"
-                        : "rgba(0,0,0,0.25)",
-                      fontSize: "11px",
-                      mt: 0.3,
-                    }}
-                  >
-                    #{index + 1}
-                  </Typography>
-                </Box>
-
-                <MoreVertIcon
-                  sx={{ color: metaColor, fontSize: 18, flexShrink: 0 }}
-                  onClick={(e) => e.stopPropagation()}
+          >
+             <Box display="flex" alignItems="center" gap={1.2}>
+                <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.3px", color: textColor }}>Up Next</Typography>
+                <Chip 
+                  label="AUTOPLAY" 
+                  size="small" 
+                  sx={{ 
+                    height: 20, 
+                    fontSize: "9px", 
+                    fontWeight: 900, 
+                    bgcolor: isDark ? "rgba(255,77,77,0.15)" : "rgba(255,0,0,0.08)", 
+                    color: "#ff4d4d",
+                    letterSpacing: "0.5px",
+                    border: "1px solid rgba(255,77,77,0.2)"
+                  }} 
                 />
+             </Box>
+             <FormControlLabel
+                control={
+                  <Switch 
+                    checked={autoPlayEnabled} 
+                    onChange={() => setAutoPlayEnabled(!autoPlayEnabled)} 
+                    size="small" 
+                    sx={{ 
+                      "& .MuiSwitch-switchBase.Mui-checked": { color: "#ff4d4d" }, 
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#ff4d4d", opacity: 0.5 } 
+                    }} 
+                  />
+                }
+                label=""
+                sx={{ mr: 0 }}
+             />
+          </Box>
+
+          {/* Series Playlist */}
+          {seriesPlaylist.length > 0 && (
+            <Box sx={{ mb: 5 }}>
+              <Box sx={{ backgroundColor: "rgba(255,255,255,0.05)", p: 2, borderRadius: "20px 20px 0 0", borderBottom: `2px solid #ff4d4d`, backdropFilter: "blur(10px)" }}>
+                <Typography sx={{ fontWeight: 900, fontSize: "0.9rem", color: "#ff4d4d", textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                  Series Episodes
+                </Typography>
               </Box>
-            );
-          })}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, backgroundColor: glassBg, borderRadius: "0 0 20px 20px", border: `1px solid ${glassBorder}`, borderTop: "none", overflow: "hidden", backdropFilter: "blur(20px)" }}>
+                {seriesPlaylist.slice(0, 10).map((video) => renderVideoRow(video, true))}
+              </Box>
+            </Box>
+          )}
+
+          {/* Recommended Section */}
+          <Typography sx={{ fontWeight: 900, fontSize: "1.1rem", mb: 2.5, pl: 1 }}>Recommended</Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {playlist.map((video) => renderVideoRow(video, false))}
+          </Box>
         </Box>
       </Box>
     </Box>
   );
+
+  function renderVideoRow(video: YouTubeVideoInfo, isSeries: boolean) {
+    const isCurrent = video.id === id;
+    
+    return (
+      <Box
+        key={`${isSeries ? "s" : "p"}-${video.id}`}
+        onClick={() => navigate(`/video/${video.id}`)}
+        sx={{
+          display: "flex",
+          gap: 2,
+          cursor: "pointer",
+          p: 1.2,
+          borderRadius: "16px",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          backgroundColor: isCurrent ? "rgba(255,77,77,0.1)" : "transparent",
+          "&:hover": {
+            backgroundColor: isCurrent ? "rgba(255,77,77,0.15)" : cardHover,
+            transform: "scale(1.02)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+          },
+          ...(isSeries && { p: 1.8 }),
+        }}
+      >
+        <Box sx={{ flexShrink: 0, width: isSeries ? 130 : 180, aspectRatio: "16/9", borderRadius: "12px", overflow: "hidden", position: "relative", boxShadow: isDark ? "0 6px 15px rgba(0,0,0,0.3)" : "none" }}>
+          <Box component="img" src={video.thumbnail} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <Box sx={{ position: "absolute", bottom: 6, right: 6, backgroundColor: "rgba(0,0,0,0.85)", color: "#fff", px: 0.8, py: 0.3, borderRadius: "6px", fontSize: "11px", fontWeight: 800, backdropFilter: "blur(4px)" }}>
+            {video.duration || "4:32"}
+          </Box>
+          {isCurrent && (
+            <Box sx={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
+              <PlayCircleOutlineIcon sx={{ color: "#fff", fontSize: 32 }} />
+            </Box>
+          )}
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: "0.95rem",
+              color: isCurrent ? "#ff4d4d" : textColor,
+              lineHeight: 1.4,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              mb: 0.8,
+            }}
+          >
+            {video.title}
+          </Typography>
+          <Typography sx={{ color: metaColor, fontSize: "0.75rem", fontWeight: 700, mb: 0.5 }}>{video.subTitle}</Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography sx={{ color: metaColor, fontSize: "0.75rem", fontWeight: 500 }}>{video.viewCount || "1.2M"} views</Typography>
+            <Typography sx={{ color: metaColor, fontSize: "0.7rem", opacity: 0.5 }}>•</Typography>
+            <Typography sx={{ color: metaColor, fontSize: "0.75rem", fontWeight: 500 }}>2 days ago</Typography>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 };
 
 export default VideoPage;

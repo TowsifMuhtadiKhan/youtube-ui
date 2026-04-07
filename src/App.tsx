@@ -12,13 +12,13 @@ import {
 import MediaBrowser from "./components/Shorts";
 import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
-import { useMediaQuery, useTheme } from "@mui/material";
+import { CircularProgress, useMediaQuery, useTheme } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
 import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
-import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
 import { AppThemeProvider } from "./components/ThemeContext";
+
 
 const LoadingScreen = () => (
   <Box
@@ -54,9 +54,12 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
 const AppContent = () => {
   const theme = useTheme();
+
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [isSidebarExpanded, setSidebarExpanded] = useState(!isMobile);
   const location = useLocation();
+
+
 
   const handleToggleSidebar = () => {
     setSidebarExpanded((prev) => !prev);
@@ -67,8 +70,17 @@ const AppContent = () => {
   };
 
   useEffect(() => {
-    setSidebarExpanded(!isMobile);
-  }, [isMobile]);
+    if (isMobile) {
+      setSidebarExpanded(false);
+    } else {
+      // Auto-collapse sidebar on video page for better viewing
+      if (location.pathname.startsWith("/video/")) {
+        setSidebarExpanded(false);
+      } else {
+        setSidebarExpanded(true);
+      }
+    }
+  }, [location.pathname, isMobile]);
 
   const isLoginPage = location.pathname === "/login";
 
@@ -80,7 +92,7 @@ const AppContent = () => {
         transition: "background-color 0.3s ease",
       }}
     >
-      {!isLoginPage && <Header onToggleSidebar={handleToggleSidebar} />}
+      {!isLoginPage && <Header onToggleSidebar={handleToggleSidebar} isSidebarExpanded={isSidebarExpanded} />}
       {!isLoginPage && <Sidebar isSidebarExpanded={isSidebarExpanded} onClose={handleCloseSidebar} />}
       <Routes>
         <Route path="/login" element={<Login />} />

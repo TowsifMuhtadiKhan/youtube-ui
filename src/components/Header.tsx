@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import {
-  AppBar,
-  Toolbar,
   Typography,
   IconButton,
   Box,
@@ -11,35 +9,33 @@ import {
   useMediaQuery,
   Paper,
   List,
-  ListItem,
   ListItemAvatar,
   ListItemText,
   ListItemButton,
   styled,
   Tooltip,
   Badge,
+  Menu,
+  MenuItem,
+  Divider,
 } from "@mui/material";
 import { Menu as MenuIcon } from "@mui/icons-material";
-import Logo from "../assets/youtube-svgrepo-com.svg";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
-import videoData from "./data.json";
+import { fetchSearchResults } from "../api/youtube";
+import type { YouTubeVideoInfo } from "../api/youtube";
 import seriesMoviesData from "./driveData.json";
 import { useAuth } from "./Auth/AuthContext";
 import { useThemeMode } from "./ThemeContext";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import LogoutIcon from "@mui/icons-material/Logout";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
-import VideoLibraryIcon from "@mui/icons-material/VideoLibrary";
-import Divider from "@mui/material/Divider";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  isSidebarExpanded: boolean;
 }
 
 interface SearchResult {
@@ -53,31 +49,22 @@ interface SearchResult {
   series_id?: string;
 }
 
-const SuggestionPaper = styled(Paper)(() => ({
+const SuggestionPaper = styled(Paper)(({ theme }) => ({
   position: "absolute",
-  top: "calc(100% + 8px)",
+  top: "calc(100% + 12px)",
   left: 0,
   right: 0,
-  zIndex: 1300,
-  maxHeight: "420px",
+  zIndex: 1500,
+  maxHeight: "450px",
   overflowY: "auto",
-  backgroundColor: "#1c1c1c",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: "12px",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)",
+  backgroundColor: theme.palette.mode === "dark" ? "rgba(15,15,15,0.95)" : "rgba(255,255,255,0.95)",
   backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
+  borderRadius: "20px",
+  border: theme.palette.mode === "dark" ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
+  boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
 }));
 
-const SuggestionItem = styled(ListItemButton)(() => ({
-  padding: "10px 16px",
-  transition: "background-color 0.15s ease",
-  "&:hover": {
-    backgroundColor: "rgba(255,255,255,0.07) !important",
-  },
-}));
-
-const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -86,10 +73,9 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const auth = useAuth();
-  const { colorMode, toggleColorMode } = useThemeMode();
+  const { toggleColorMode } = useThemeMode();
   const open = Boolean(anchorEl);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -102,199 +88,141 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     navigate("/login");
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     if (query.trim() === "") {
       setSuggestions([]);
       return;
     }
+
+    const videoResults: SearchResult[] = [];
+    
+    // Check if query is a YouTube URL
+    const ytUrlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = query.match(ytUrlRegex);
+    if (match && match[1]) {
+       videoResults.push({
+         id: match[1],
+         title: "Play YouTube Video from URL",
+         subTitle: match[1],
+         thumbnail: `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`,
+         type: "video"
+       });
+    }
+
     const lowerQuery = query.toLowerCase();
-    const videoResults: SearchResult[] = videoData
-      .filter(
-        (video) =>
-          video.title.toLowerCase().includes(lowerQuery) ||
-          (video.subTitle && video.subTitle.toLowerCase().includes(lowerQuery))
-      )
-      .map((video) => ({
-        id: video.id,
-        title: video.title,
-        subTitle: video.subTitle,
-        thumbnail: video.thumbnail,
-        type: "video",
-      }));
+    const ytResults = await fetchSearchResults(query, 6);
+    ytResults.forEach((video: YouTubeVideoInfo) => {
+       if (video.id !== match?.[1]) { // Avoid duplicate if already matched by URL
+         videoResults.push({
+           id: video.id,
+           title: video.title,
+           subTitle: video.subTitle,
+           thumbnail: video.thumbnail,
+           type: "video",
+         });
+       }
+    });
 
-    const seriesResults: SearchResult[] = seriesMoviesData.series
-      .filter(
-        (series) =>
-          series.title.toLowerCase().includes(lowerQuery) ||
-          series.description.toLowerCase().includes(lowerQuery)
-      )
-      .flatMap((series) => [
-        {
-          id: series.id,
-          title: series.title,
-          description: series.description,
-          thumbnail: series.thumbnail,
-          type: "series" as const,
-        },
-        ...series.episodes
-          .filter(
-            (episode) =>
-              episode.title.toLowerCase().includes(lowerQuery) ||
-              episode.description.toLowerCase().includes(lowerQuery)
-          )
-          .map((episode) => ({
-            id: `${series.id}_${episode.episode_number}`,
-            title: `${series.title} - Ep ${episode.episode_number}: ${episode.title}`,
-            description: episode.description,
-            thumbnail: episode.thumbnail,
-            type: "episode" as const,
-            episode_number: episode.episode_number,
-            series_id: series.id,
-          })),
-      ]);
+    const seriesResults: SearchResult[] = (seriesMoviesData as any).series
+      .filter((s:any) => s.title.toLowerCase().includes(lowerQuery))
+      .map((s:any) => ({ id: s.id, title: s.title, thumbnail: s.thumbnail, type: "series" }));
 
-    const movieResults: SearchResult[] = seriesMoviesData.movies
-      .filter(
-        (movie) =>
-          movie.title.toLowerCase().includes(lowerQuery) ||
-          movie.description.toLowerCase().includes(lowerQuery)
-      )
-      .map((movie) => ({
-        id: movie.id,
-        title: movie.title,
-        description: movie.description,
-        thumbnail: movie.thumbnail,
-        type: "movie",
-      }));
-
-    setSuggestions([...videoResults, ...seriesResults, ...movieResults]);
+    setSuggestions([...videoResults, ...seriesResults]);
   };
 
   const handleSuggestionClick = (item: SearchResult) => {
-    switch (item.type) {
-      case "video": navigate(`/video/${item.id}`); break;
-      case "series": navigate(`/series/${item.id}`); break;
-      case "movie": navigate(`/movie/${item.id}`); break;
-      case "episode":
-        if (item.series_id) navigate(`/series/${item.series_id}/episode/${item.episode_number}`);
-        break;
-    }
+    navigate(`/video/${item.id}`);
     setSearchQuery("");
-    setSuggestions([]);
     setShowSuggestions(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && searchQuery.trim() !== "" && suggestions.length > 0) {
-      handleSuggestionClick(suggestions[0]);
-    }
-    if (e.key === "Escape") {
-      setShowSuggestions(false);
-    }
-  };
-
-  const truncateText = (text: string, maxLength: number): string => {
-    if (!text) return "";
-    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
-  };
-
-  const getSubtitle = (item: SearchResult) => {
-    const typeLabel = item.type === "video" ? "Video" : item.type === "movie" ? "Movie" : item.type === "series" ? "Series" : "Episode";
-    const detail = item.subTitle || item.description || "";
-    return `${typeLabel}${detail ? " • " + truncateText(detail, 45) : ""}`;
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-    setSuggestions([]);
-  };
+  // Sync with Content spacing (matches MainContainer/VideoPage)
+  const sidebarWidthValue = isMobile ? 0 : (isSidebarExpanded ? 228 : 100);
 
   return (
-    <AppBar
-      position="fixed"
-      elevation={0}
+    <Box
+      component="header"
       sx={{
-        zIndex: 1201,
-        backgroundColor: isDark ? "rgba(15,15,15,0.92)" : "rgba(255,255,255,0.92)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.08)",
-        px: isMobile ? 1 : 2,
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1400,
+        px: { xs: 1, sm: 1.5, md: 1.5 },
+        pl: isMobile ? 1 : `${sidebarWidthValue + 16}px`, // Reduced padding to increase width
+        pr: isMobile ? 1 : "20px",
+        py: 1.2,
+        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
-      <Toolbar sx={{ minHeight: "64px !important", gap: 1 }}>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          width="100%"
-          gap={1}
-          position="relative"
-        >
-          {/* Left – Logo & Menu */}
-          <Box display="flex" alignItems="center" gap={0.5} sx={{ flexShrink: 0 }}>
-            <Tooltip title="Toggle sidebar" placement="bottom">
-              <IconButton
-                edge="start"
-                onClick={onToggleSidebar}
+      <Box
+        sx={{
+          backgroundColor: isDark ? "rgba(10,10,10,0.75)" : "rgba(255,255,255,0.75)",
+          backdropFilter: "blur(25px)",
+          WebkitBackdropFilter: "blur(25px)",
+          borderRadius: "22px",
+          border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "none",
+          height: 68,
+          display: "flex",
+          alignItems: "center",
+          px: { xs: 1.5, sm: 4 }, // Increased inner padding
+          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          "&:hover": {
+             borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
+          }
+        }}
+      >
+        <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" gap={2}>
+          {/* Brand */}
+          <Box display="flex" alignItems="center" gap={1}>
+            <IconButton
+              onClick={onToggleSidebar}
+              sx={{
+                color: isDark ? "white" : "black",
+                bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+                "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" },
+                borderRadius: "14px",
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Box display="flex" alignItems="center" gap={1} sx={{ cursor: "pointer", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", "&:hover": { transform: "scale(1.02)" } }} onClick={() => navigate("/")}>
+              <Box
                 sx={{
-                  color: isDark ? "#f1f1f1" : "#0f0f0f",
-                  "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
-                  borderRadius: "50%",
+                  width: 28,
+                  height: 28,
+                  bgcolor: "#ff0000",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "none",
+                  background: "linear-gradient(135deg, #ff0000, #cc0000)",
                 }}
               >
-                <MenuIcon />
-              </IconButton>
-            </Tooltip>
-            <Box
-              display="flex"
-              alignItems="center"
-              gap={1}
-              sx={{ cursor: "pointer", "&:hover": { opacity: 0.85 } }}
-              onClick={() => navigate("/")}
-            >
-              <img src={Logo} alt="TomTube" style={{ height: 28 }} />
+                <Box
+                  sx={{
+                    width: 0,
+                    height: 0,
+                    borderTop: "5px solid transparent",
+                    borderBottom: "5px solid transparent",
+                    borderLeft: "8px solid white",
+                    ml: "2px",
+                  }}
+                />
+              </Box>
               {!isMobile && (
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    sx={{
-                      fontSize: isTablet ? "17px" : "19px",
-                      fontWeight: 800,
-                      letterSpacing: "-0.5px",
-                      color: isDark ? "#f1f1f1" : "#0f0f0f",
-                      fontFamily: "'Inter', sans-serif",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    TomTube
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: "10px",
-                      fontWeight: 600,
-                      color: "white",
-                      backgroundColor: "#ff0000",
-                      px: 0.75,
-                      py: 0.25,
-                      borderRadius: "6px",
-                      lineHeight: 1,
-                      letterSpacing: "0.2px",
-                      alignSelf: "flex-start",
-                      mt: "2px",
-                    }}
-                  >
-                    v1.0.0
-                  </Typography>
-                </Box>
+                <Typography sx={{ fontWeight: 700, fontSize: "20px", letterSpacing: "-0.3px", color: isDark ? "#fff" : "#000" }}>TomTube</Typography>
               )}
             </Box>
           </Box>
 
-          {/* Center – Search */}
+          {/* Search Island */}
           <Box
             sx={{
-              flexGrow: isMobile ? 1 : 1,
-              maxWidth: isMobile ? "240px" : "560px",
+              flexGrow: 1,
+              maxWidth: isMobile ? "240px" : "620px",
               position: "relative",
             }}
           >
@@ -302,217 +230,114 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                border: searchFocused
-                  ? isDark ? "1.5px solid rgba(255,255,255,0.3)" : "1.5px solid rgba(0,0,0,0.3)"
-                  : isDark ? "1.5px solid rgba(255,255,255,0.1)" : "1.5px solid rgba(0,0,0,0.15)",
-                borderRadius: "24px",
+                borderRadius: "18px",
                 overflow: "hidden",
-                backgroundColor: isDark
-                  ? (searchFocused ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)")
-                  : (searchFocused ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.04)"),
-                transition: "all 0.2s ease",
-                boxShadow: searchFocused ? "0 0 0 3px rgba(255,0,0,0.08)" : "none",
+                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+                border: "1px solid transparent",
+                borderColor: searchFocused ? (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)") : "transparent",
+                transition: "all 0.3s ease",
+                boxShadow: "none",
               }}
             >
-              <Box
-                sx={{
-                  pl: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  color: searchFocused ? (isDark ? "#f1f1f1" : "#0f0f0f") : "#888",
-                }}
-              >
-                <SearchIcon sx={{ fontSize: 18 }} />
+              <Box sx={{ pl: 2, color: searchFocused ? "#ff4d4d" : "#888", display: "flex", alignItems: "center" }}>
+                <SearchIcon sx={{ fontSize: 20 }} />
               </Box>
               <TextField
+                fullWidth
                 size="small"
                 value={searchQuery}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => { setTimeout(() => setSearchFocused(false), 200); setShowSuggestions(false); }}
+                onKeyDown={(e) => {
+                   if (e.key === "Enter" && searchQuery.trim()) {
+                      const ytUrlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+                      const match = searchQuery.match(ytUrlRegex);
+                      if (match && match[1]) {
+                        navigate(`/video/${match[1]}`);
+                        setSearchQuery("");
+                        setShowSuggestions(false);
+                      } else {
+                        // Standard search logic (could go to search results page)
+                        if (suggestions.length > 0) handleSuggestionClick(suggestions[0]);
+                      }
+                   }
+                }}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   handleSearch(e.target.value);
                   setShowSuggestions(true);
                 }}
-                onKeyDown={handleKeyDown}
-                onFocus={() => { setShowSuggestions(true); setSearchFocused(true); }}
-                onBlur={() => { setTimeout(() => setShowSuggestions(false), 200); setSearchFocused(false); }}
-                InputProps={{
-                  sx: {
-                    backgroundColor: "transparent",
-                    color: isDark ? "#f1f1f1" : "#0f0f0f",
+                placeholder="Search..."
+                sx={{
+                  "& .MuiOutlinedInput-root": {
                     "& fieldset": { border: "none" },
-                    "& input::placeholder": { color: "#888", opacity: 1, fontSize: "14px" },
-                    fontSize: "14px",
-                    height: 38,
-                    px: 0.5,
-                  },
+                    color: isDark ? "white" : "black",
+                    fontSize: "15px",
+                    fontWeight: 500,
+                  }
                 }}
-                variant="outlined"
-                placeholder={isMobile ? "Search..." : "Search TomTube..."}
-                sx={{ width: "100%" }}
               />
               {searchQuery && (
-                <IconButton
-                  size="small"
-                  onClick={clearSearch}
-                  sx={{ mr: 0.5, color: "#888", "&:hover": { color: "#f1f1f1" }, p: 0.5 }}
-                >
-                  <ClearIcon sx={{ fontSize: 16 }} />
+                <IconButton size="small" onClick={() => setSearchQuery("")} sx={{ mr: 1, opacity: 0.6 }}>
+                  <ClearIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               )}
             </Box>
 
-            {/* Suggestions dropdown */}
-            {showSuggestions && (
+            {showSuggestions && suggestions.length > 0 && (
               <SuggestionPaper>
-                {suggestions.length > 0 ? (
-                  <List dense disablePadding sx={{ py: 0.5 }}>
-                    {suggestions.map((item) => (
-                      <ListItem key={item.id} disablePadding>
-                        <SuggestionItem onClick={() => handleSuggestionClick(item)}>
-                          <ListItemAvatar sx={{ minWidth: 50 }}>
-                            <Box
-                              component="img"
-                              src={item.thumbnail}
-                              alt={item.title}
-                              sx={{
-                                width: 44,
-                                height: 44,
-                                objectFit: "cover",
-                                borderRadius: "8px",
-                              }}
-                            />
-                          </ListItemAvatar>
-                          <ListItemText
-                            primary={truncateText(item.title, 42)}
-                            secondary={getSubtitle(item)}
-                            primaryTypographyProps={{
-                              sx: { color: "#f1f1f1", fontWeight: 500, fontSize: "13px" },
-                            }}
-                            secondaryTypographyProps={{
-                              sx: { color: "#888", fontSize: "11px", mt: 0.25 },
-                            }}
-                          />
-                        </SuggestionItem>
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : searchQuery.trim() ? (
-                  <Box sx={{ px: 2, py: 2.5, textAlign: "center" }}>
-                    <Typography sx={{ color: "#666", fontSize: "13px" }}>
-                      No results for "{truncateText(searchQuery, 30)}"
-                    </Typography>
-                  </Box>
-                ) : null}
+                <List dense sx={{ py: 1 }}>
+                  {suggestions.map((item) => (
+                    <ListItemButton key={item.id} onClick={() => handleSuggestionClick(item)} sx={{ px: 2, py: 1.5, borderRadius: "12px", mx: 1, mb: 0.5, "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}>
+                      <ListItemAvatar>
+                        <Avatar variant="rounded" src={item.thumbnail} sx={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,0.05)" }} />
+                      </ListItemAvatar>
+                      <ListItemText 
+                        primary={item.title} 
+                        secondary={item.subTitle} 
+                        primaryTypographyProps={{ sx: { fontWeight: 600, fontSize: "14px", color: isDark ? "#fff" : "#000" } }}
+                        secondaryTypographyProps={{ sx: { fontSize: "11px", color: "rgba(128,128,128,0.8)" } }}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
               </SuggestionPaper>
             )}
           </Box>
 
-          {/* Right – Actions */}
-          <Box display="flex" alignItems="center" gap={0.5} sx={{ flexShrink: 0 }}>
-            {/* Theme Toggle */}
-            <Tooltip title={colorMode === "dark" ? "Switch to Light mode" : "Switch to Dark mode"} placement="bottom">
-              <IconButton
-                onClick={toggleColorMode}
-                sx={{
-                  color: isDark ? "#f1f1f1" : "#0f0f0f",
-                  "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
-                }}
-              >
-                {colorMode === "dark" ? (
-                  <LightModeIcon sx={{ fontSize: 22 }} />
-                ) : (
-                  <DarkModeIcon sx={{ fontSize: 22 }} />
-                )}
+          {/* Actions */}
+          <Box display="flex" alignItems="center" gap={1}>
+            <Tooltip title="Toggle Theme">
+              <IconButton onClick={toggleColorMode} sx={{ color: isDark ? "#fff" : "#000", bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}>
+                {isDark ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
             </Tooltip>
-
             {!isMobile && (
-              <Tooltip title="Notifications" placement="bottom">
-                <IconButton
-                  sx={{
-                    color: isDark ? "#f1f1f1" : "#0f0f0f",
-                    "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
-                  }}
-                >
-                  <Badge badgeContent={3} color="error" sx={{ "& .MuiBadge-badge": { fontSize: "10px", minWidth: "16px", height: "16px" } }}>
-                    <NotificationsNoneOutlinedIcon sx={{ fontSize: 24 }} />
+              <Tooltip title="Notifications">
+                <IconButton sx={{ color: isDark ? "#fff" : "#000" }}>
+                  <Badge badgeContent={3} color="error">
+                    <NotificationsNoneOutlinedIcon />
                   </Badge>
                 </IconButton>
               </Tooltip>
             )}
-
-            <Tooltip title="Account" placement="bottom">
-              <IconButton onClick={handleAvatarClick} sx={{ p: 0.5 }}>
-                <Avatar
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    background: "linear-gradient(135deg, #ff0000, #cc2200)",
-                    border: isDark ? "2px solid rgba(255,255,255,0.15)" : "2px solid rgba(0,0,0,0.15)",
-                    transition: "all 0.2s ease",
-                    "&:hover": { border: "2px solid rgba(255,0,0,0.5)", transform: "scale(1.05)" },
-                  }}
-                >
-                  T
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={open}
-              onClose={handleClose}
-              onClick={handleClose}
-              PaperProps={{
-                elevation: 0,
-                sx: {
-                  mt: 1.5,
-                  minWidth: 200,
-                  backgroundColor: "#1c1c1c",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "12px",
-                  boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
-                  "& .MuiMenuItem-root": {
-                    fontSize: "14px",
-                    color: "#f1f1f1",
-                    py: 1.25,
-                    px: 2,
-                    gap: 1.5,
-                    borderRadius: "8px",
-                    mx: 0.5,
-                    mb: 0.25,
-                    "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" },
-                  },
-                },
-              }}
-              transformOrigin={{ horizontal: "right", vertical: "top" }}
-              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-            >
-              <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
-                <Typography sx={{ fontSize: "12px", color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px" }}>
-                  Account
-                </Typography>
-              </Box>
-              <MenuItem onClick={() => navigate("/")}>
-                <VideoLibraryIcon sx={{ fontSize: 18, color: "#888" }} />
-                My Library
-              </MenuItem>
-              <MenuItem>
-                <PersonOutlineIcon sx={{ fontSize: 18, color: "#888" }} />
-                Profile
-              </MenuItem>
-              <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", my: 0.5, mx: 1 }} />
-              <MenuItem onClick={handleLogout} sx={{ color: "#ff6b6b !important" }}>
-                <LogoutIcon sx={{ fontSize: 18, color: "#ff6b6b" }} />
-                Sign out
-              </MenuItem>
+            <IconButton onClick={handleAvatarClick} sx={{ p: 0.5 }}>
+               <Avatar sx={{ width: 38, height: 38, border: "2px solid #ff4d4d", background: "#ff4d4d", fontWeight: 800, fontSize: "15px" }}>T</Avatar>
+            </IconButton>
+            <Menu anchorEl={anchorEl} open={open} onClose={handleClose} PaperProps={{ sx: { mt: 1.5, minWidth: 220, bgcolor: isDark ? "#111" : "#fff", borderRadius: "18px", boxShadow: "0 10px 40px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)" } }}>
+               <Box sx={{ px: 2.5, py: 2 }}>
+                 <Typography sx={{ fontWeight: 800, fontSize: "15px", color: isDark ? "#fff" : "#000" }}>Towsif Muhtadi Khan</Typography>
+                 <Typography sx={{ fontSize: "12px", color: "gray" }}>Premium Account</Typography>
+               </Box>
+               <Divider sx={{ opacity: 0.1 }} />
+               <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: "#ff4d4d", fontWeight: 700 }}>
+                 <LogoutIcon sx={{ fontSize: 20, mr: 1.5 }} /> Logout
+               </MenuItem>
             </Menu>
           </Box>
         </Box>
-      </Toolbar>
-    </AppBar>
+      </Box>
+    </Box>
   );
 };
 
