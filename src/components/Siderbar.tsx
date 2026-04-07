@@ -7,7 +7,6 @@ import {
   useTheme,
   useMediaQuery,
   Tooltip,
-  Avatar,
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
