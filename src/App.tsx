@@ -14,6 +14,8 @@ import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
 import { CircularProgress, useMediaQuery, useTheme } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
+import ShortsPage from "./components/ShortsPage";
+import Settings from "./components/Settings";
 import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
 import Box from "@mui/material/Box";
@@ -141,6 +143,22 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <DrivePlayer isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shorts"
+          element={
+            <ProtectedRoute>
+              <ShortsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings isSidebarExpanded={isSidebarExpanded} />
             </ProtectedRoute>
           }
         />

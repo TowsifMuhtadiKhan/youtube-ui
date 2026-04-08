@@ -1,8 +1,7 @@
-import React, { type JSX } from "react";
+import React from "react";
 import {
   Box,
   Divider,
-  Drawer,
   Typography,
   useTheme,
   useMediaQuery,
@@ -13,18 +12,15 @@ import {
   Home as HomeIcon,
   Subscriptions as SubscriptionsIcon,
   VideoLibrary as VideoLibraryIcon,
+  Settings as SettingsIcon,
+  Android as AndroidIcon,
+  Whatshot as WhatshotIcon,
   History as HistoryIcon,
   PlaylistPlay as PlaylistPlayIcon,
   WatchLater as WatchLaterIcon,
   ThumbUpAlt as ThumbUpAltIcon,
-  TrendingUp as TrendingUpIcon,
-  MusicNote as MusicNoteIcon,
-  SportsEsports as SportsEsportsIcon,
-  SportsBaseball as SportsBaseballIcon,
-  Settings as SettingsIcon,
-  Feedback as FeedbackIcon,
-  Android as AndroidIcon,
 } from "@mui/icons-material";
+import { useThemeMode } from "./ThemeContext";
 
 interface SidebarProps {
   isSidebarExpanded: boolean;
@@ -37,11 +33,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDark = theme.palette.mode === "dark";
+  const { primaryColor } = useThemeMode();
 
   const sections = [
     { icon: <HomeIcon />, label: "Home", path: "/home" },
-    { icon: <VideoLibraryIcon />, label: "Movies", path: "/movies" },
+    { icon: <WhatshotIcon />, label: "Shorts", path: "/shorts" },
     { icon: <SubscriptionsIcon />, label: "Subscriptions", path: "/subscriptions" },
+    { icon: <VideoLibraryIcon />, label: "Movies", path: "/movies" },
   ];
 
   const moreSections = [
@@ -51,30 +49,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
     { icon: <ThumbUpAltIcon />, label: "Liked Videos", path: "/liked-videos" },
   ];
 
-  const trendingSections = [
-    { icon: <TrendingUpIcon />, label: "Trending", path: "/trending" },
-    { icon: <MusicNoteIcon />, label: "Music", path: "/music" },
-    { icon: <SportsEsportsIcon />, label: "Gaming", path: "/gaming" },
-    { icon: <SportsBaseballIcon />, label: "Sports", path: "/sports" },
-  ];
-
   const lastSections = [
     { icon: <SettingsIcon />, label: "Settings", path: "/settings" },
-    { icon: <FeedbackIcon />, label: "Feedback", path: "/feedback" },
     { icon: <AndroidIcon sx={{ color: "#3DDC84" }} />, label: "Download App", path: "https://drive.google.com/drive/folders/1g6IDpBA6GNOas-CTL9ZjOOcQUrhoc17p", external: true },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
-  const bgActive = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-  const bgHover = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
-  const iconColor = isDark ? "#f1f1f1" : "#0f0f0f";
-  const iconActiveColor = isDark ? "#ffffff" : "#000000";
-  const textColor = isDark ? "#f1f1f1" : "#0f0f0f";
-  const textActiveColor = isDark ? "#ffffff" : "#000000";
+  // Header Match Style (Floating Glass)
+  const glassBg = isDark ? "rgba(10,10,10,0.75)" : "rgba(255,255,255,0.75)";
+  const glassBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  
+  const bgActive = `${primaryColor}15`;
+  const iconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)";
+  const textColor = isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)";
 
   const renderSection = (
-    items: Array<{ icon: JSX.Element; label: string; path: string; external?: boolean }>,
+    items: Array<{ icon: any; label: string; path: string; external?: boolean }>,
     sectionLabel?: string
   ) => (
     <>
@@ -82,13 +73,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
         <Typography
           sx={{
             fontSize: "11px",
-            fontWeight: 700,
+            fontWeight: 800,
             letterSpacing: "0.8px",
             textTransform: "uppercase",
-            color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)",
-            px: 1.5,
-            pt: 1,
-            pb: 0.5,
+            color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)",
+            px: 2.5,
+            pt: 2,
+            pb: 1,
           }}
         >
           {sectionLabel}
@@ -98,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
         const active = isActive(section.path);
         const item = (
           <Box
-            key={section.path}
+            key={section.label}
             onClick={() => {
               if (section.external) {
                 window.open(section.path, "_blank");
@@ -110,61 +101,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: isSidebarExpanded ? 1.5 : 0,
-              justifyContent: isSidebarExpanded ? "flex-start" : "center",
-              px: isSidebarExpanded ? 1.5 : 0,
-              py: 0.85,
-              borderRadius: "10px",
-              mb: 0.25,
+              flexDirection: isSidebarExpanded ? "row" : "column",
+              py: isSidebarExpanded ? 0.8 : 1.2,
+              px: isSidebarExpanded ? 2.2 : 0.5,
+              borderRadius: "14px",
               cursor: "pointer",
               backgroundColor: active ? bgActive : "transparent",
-              transition: "all 0.15s ease",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              mb: 0.4,
+              mx: isSidebarExpanded ? 1.5 : 1, // Adjusted mx for better centering
+              justifyContent: isSidebarExpanded ? "flex-start" : "center",
               "&:hover": {
-                backgroundColor: active ? bgActive : bgHover,
+                backgroundColor: active ? bgActive : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                transform: isSidebarExpanded ? "translateX(4px)" : "scale(1.05)",
               },
-              position: "relative",
-              overflow: "hidden",
             }}
           >
-            {/* Active indicator strip */}
-            {active && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  left: 0,
-                  top: "20%",
-                  height: "60%",
-                  width: 3,
-                  backgroundColor: "#ff0000",
-                  borderRadius: "0 2px 2px 0",
-                }}
-              />
-            )}
             <Box
               sx={{
                 display: "flex",
-                alignItems: "center",
+                color: active ? primaryColor : iconColor,
+                minWidth: isSidebarExpanded ? "32px" : "auto",
+                width: isSidebarExpanded ? "auto" : "100%",
                 justifyContent: "center",
-                flexShrink: 0,
-                ml: active && isSidebarExpanded ? 0 : 0,
+                transition: "all 0.3s ease",
               }}
             >
-              {React.cloneElement(section.icon, {
-                sx: {
-                  fontSize: "22px",
-                  color: active ? iconActiveColor : iconColor,
-                  opacity: active ? 1 : 0.75,
-                },
-              })}
+              {React.cloneElement(section.icon, { sx: { fontSize: active ? 22 : 20 } })}
             </Box>
             {isSidebarExpanded && (
               <Typography
                 sx={{
-                  fontSize: "13px",
-                  fontWeight: active ? 600 : 400,
-                  color: active ? textActiveColor : textColor,
-                  opacity: active ? 1 : 0.75,
-                  lineHeight: 1,
+                  fontSize: "14px",
+                  fontWeight: active ? 700 : 500,
+                  color: active ? primaryColor : textColor,
+                  ml: 2,
+                  transition: "all 0.3s ease",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 {section.label}
@@ -173,69 +148,78 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
           </Box>
         );
 
-        return !isSidebarExpanded ? (
-          <Tooltip key={section.path} title={section.label} placement="right">
+        return isSidebarExpanded ? (
+          item
+        ) : (
+          <Tooltip key={section.label} title={section.label} placement="right">
             {item}
           </Tooltip>
-        ) : (
-          item
         );
       })}
     </>
   );
 
-  return (
-    <Drawer
-      variant={isMobile ? "temporary" : "permanent"}
-      open={isSidebarExpanded}
-      onClose={onClose}
+  const sidebarContent = (
+    <Box
       sx={{
-        width: isSidebarExpanded ? 200 : 72,
-        flexShrink: 0,
-        zIndex: theme.zIndex.drawer + 2,
-        "& .MuiDrawer-paper": {
-          width: isSidebarExpanded ? 200 : 72,
-          boxSizing: "border-box",
-          backgroundColor: isDark ? "rgba(8,8,8,0.7)" : "rgba(255,255,255,0.7)",
-          backdropFilter: "blur(20px)",
-          border: "none",
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          overflowX: "hidden",
-          height: isMobile ? "calc(100vh - 68px)" : "calc(100vh - 92px)",
-          top: isMobile ? 68 : 92,
-          ...(!isMobile && {
-            left: 16,
-            borderRadius: "24px",
-            boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "none",
-            border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.05)",
-          }),
-        },
+        width: isSidebarExpanded ? 210 : 72,
+        height: "100%",
+        backgroundColor: glassBg,
+        backdropFilter: "blur(25px)",
+        WebkitBackdropFilter: "blur(25px)",
+        borderRadius: "22px",
+        overflowY: "auto",
+        transition: "width 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        pt: 2.5, // Increased space before Home
+        pb: 1,
+        display: "flex",
+        flexDirection: "column",
+        border: `1px solid ${glassBorder}`,
+        boxShadow: "none",
+        "&::-webkit-scrollbar": { display: "none" },
+        scrollbarWidth: "none",
       }}
     >
-      <Box sx={{ overflow: "auto", height: "100%", pt: !isMobile ? 2 : 8, px: 1.5 }}>
-        {/* User Profile Section */}
+      {renderSection(sections)}
+      <Divider sx={{ my: 1.5, mx: 3, opacity: 0.05 }} />
+      {renderSection(moreSections, "Your Space")}
+      <Divider sx={{ my: 1.5, mx: 3, opacity: 0.05 }} />
+      {renderSection(lastSections)}
 
-
-        {renderSection(sections)}
-        <Divider sx={{ my: 2, mx: 1.5, opacity: 0.1 }} />
-        {renderSection(moreSections, "Your Library")}
-        <Divider sx={{ my: 2, mx: 1.5, opacity: 0.1 }} />
-        {renderSection(trendingSections, "Explore")}
-        <Divider sx={{ my: 2, mx: 1.5, opacity: 0.1 }} />
-        {renderSection(lastSections)}
-
-        {isSidebarExpanded && (
-          <Box sx={{ px: 2, pb: 4, mt: 4 }}>
-            <Typography variant="caption" sx={{ color: "text.secondary", opacity: 0.5, display: "block", mb: 1 }}>
-              © 2026 Towsif Muhtadi Khan
+      {/* Credit Footer */}
+      <Box sx={{ mt: "auto", px: isSidebarExpanded ? 3 : 1, py: 2, textAlign: "center", opacity: 0.4 }}>
+        {isSidebarExpanded ? (
+          <>
+            <Typography sx={{ fontSize: "11px", fontWeight: 600, color: textColor, mb: 0.5 }}>
+              Towsif Muhtadi Khan
             </Typography>
-            <Typography variant="caption" sx={{ color: "text.secondary", opacity: 0.4 }}>
-              v1.0.1
+            <Typography sx={{ fontSize: "10px", color: textColor, opacity: 0.8 }}>
+              © 2026 • v 1.0.2
             </Typography>
-          </Box>
+          </>
+        ) : (
+          <Typography sx={{ fontSize: "9px", fontWeight: 800, color: textColor }}>
+            v1.0.2
+          </Typography>
         )}
       </Box>
-    </Drawer>
+    </Box>
+  );
+
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        top: 88, // Reduced from 92
+        bottom: 12, // Reduced from 16
+        left: 16,
+        zIndex: 1100,
+        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        display: isMobile && !isSidebarExpanded ? "none" : "block"
+      }}
+    >
+      {sidebarContent}
+    </Box>
   );
 };
 

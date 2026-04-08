@@ -7,21 +7,17 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-  Chip,
   Avatar,
   CircularProgress,
   TextField,
-  FormControlLabel,
   Switch,
 } from "@mui/material";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchPopularVideos, fetchVideoDetails, fetchSearchResults } from "../api/youtube";
 import type { YouTubeVideoInfo } from "../api/youtube";
-import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ScreenRotationIcon from "@mui/icons-material/ScreenRotation";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
-import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
@@ -30,6 +26,7 @@ import ShareIcon from "@mui/icons-material/Share";
 import DownloadIcon from "@mui/icons-material/Download";
 import SendIcon from "@mui/icons-material/Send";
 import SortIcon from "@mui/icons-material/Sort";
+import { useThemeMode } from "./ThemeContext";
 
 interface VideoPageProps {
   isSidebarExpanded: boolean;
@@ -47,19 +44,18 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down(1100)); // Switch to stack layout earlier to prevent overlap
   const isDark = theme.palette.mode === "dark";
+  const { primaryColor } = useThemeMode();
 
   // Gap Fix: Account for Sidebar position (left: 16) and width (200/72)
-  const sidebarOffset = isMobile ? 0 : 16;
-  const sidebarWidthValue = isMobile ? 0 : isSidebarExpanded ? 200 : 72;
-  const contentGap = isMobile ? 0 : 12; // Reduced gap
-  const totalMarginLeft = sidebarOffset + sidebarWidthValue + contentGap;
-  const headerHeight = 92; // Header (fixed) height including padding
+  const sidebarWidthValue = isSidebarExpanded ? 242 : 104;
+  const totalMarginLeft = isMobile ? 0 : sidebarWidthValue;
+  const headerHeight = 88; // Unified height
 
   // Design Tokens
   const baseBg = isDark ? "#0a0a0a" : "#f8f9fa";
   const glassBg = isDark ? "rgba(20, 20, 20, 0.65)" : "rgba(255, 255, 255, 0.75)";
   const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)";
-  const accentRed = "#ff0000";
+  const accentRed = primaryColor;
   const textColor = isDark ? "#ffffff" : "#0f0f0f";
   const metaColor = isDark ? "#aaaaaa" : "#606060";
   const cardHover = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)";
@@ -69,10 +65,32 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
   const [seriesPlaylist, setSeriesPlaylist] = useState<YouTubeVideoInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isRotated, setIsRotated] = useState(false);
   const [liked, setLiked] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  const [isPlaying, setIsPlaying] = useState(true);
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  const togglePlayback = () => {
+    if (!iframeRef.current?.contentWindow) return;
+    
+    const nextPlaying = !isPlaying;
+    const command = nextPlaying ? "playVideo" : "pauseVideo";
+    
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify({ event: "command", func: command }), 
+      "*"
+    );
+    setIsPlaying(nextPlaying);
+
+    // Show controls when toggling
+    const overlay = document.querySelector(".player-overlay");
+    if (overlay) {
+      overlay.classList.add("visible");
+      setTimeout(() => overlay.classList.remove("visible"), 2500);
+    }
+  };
 
   useEffect(() => {
     const loadVideoAndPlaylist = async () => {
@@ -115,25 +133,6 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
     loadVideoAndPlaylist();
   }, [id]);
 
-  const toggleFullscreen = async () => {
-    if (!playerContainerRef.current) return;
-    if (!isFullscreen) {
-      try { await playerContainerRef.current.requestFullscreen(); } catch (err) { /* ignore */ }
-      setIsFullscreen(true);
-      if (isMobile) {
-        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch { /* ignore */ }
-      }
-    } else {
-      if (document.fullscreenElement) {
-        try { await document.exitFullscreen(); } catch { /* ignore */ }
-      }
-      setIsFullscreen(false);
-      setIsRotated(false);
-      if (isMobile) {
-        try { await ScreenOrientation.unlock(); } catch { /* ignore */ }
-      }
-    }
-  };
 
   const toggleRotate = async () => {
     if (!playerContainerRef.current) return;
@@ -150,6 +149,15 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
     }
   };
 
+  useEffect(() => {
+    if (isRotated) {
+      document.body.classList.add("video-rotated");
+    } else {
+      document.body.classList.remove("video-rotated");
+    }
+    return () => document.body.classList.remove("video-rotated");
+  }, [isRotated]);
+
   if (loading) {
     return (
       <Box sx={{ marginLeft: `${totalMarginLeft}px`, marginTop: `${headerHeight}px`, minHeight: "calc(100vh - 92px)", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: baseBg }}>
@@ -162,7 +170,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
     return (
       <Box sx={{ marginLeft: `${totalMarginLeft}px`, marginTop: `${headerHeight}px`, minHeight: "calc(100vh - 92px)", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: baseBg }}>
         <Box textAlign="center" className="fade-in">
-          <PlayCircleOutlineIcon sx={{ fontSize: 72, color: metaColor, mb: 2, opacity: 0.5 }} />
+          <PlayArrowIcon sx={{ fontSize: 72, color: metaColor, mb: 2, opacity: 0.5 }} />
           <Typography variant="h5" sx={{ color: metaColor, fontWeight: 700 }}>Video not found</Typography>
           <Button onClick={() => navigate("/")} sx={{ mt: 2, color: accentRed }}>Back to Home</Button>
         </Box>
@@ -198,6 +206,12 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
         flexDirection: isMobile ? "column" : "row",
         position: "relative",
         gap: 3,
+        "@media (orientation: landscape) and (max-height: 500px)": {
+          marginTop: 0,
+          marginLeft: "0 !important",
+          paddingRight: 0,
+          gap: 0,
+        },
       }}
     >
       {/* ── CINEMATIC AMBIENT BACKGROUND ── */}
@@ -250,7 +264,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           sx={{
             backgroundColor: "#000",
             overflow: "hidden",
-            boxShadow: (isFullscreen || isRotated) ? "none" : (isDark ? "0 25px 70px rgba(0,0,0,0.6)" : "none"),
+            boxShadow: isRotated ? "none" : (isDark ? "0 25px 70px rgba(0,0,0,0.6)" : "none"),
             mb: { xs: 2.5, md: 4 },
             transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
             "&:hover .player-overlay": { opacity: 1 },
@@ -267,14 +281,6 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               margin: 0,
               zIndex: 99999,
               borderRadius: 0,
-            } : isFullscreen ? {
-              position: "fixed",
-              inset: 0,
-              width: "100vw",
-              height: "100vh",
-              margin: 0,
-              zIndex: 99999,
-              borderRadius: 0,
             } : {
               position: "relative",
               width: "100%",
@@ -286,33 +292,72 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           }}
         >
           <iframe
-            src={`https://www.youtube.com/embed/${getEmbedId(selectedVideo)}?rel=0&autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3&showinfo=0&color=white&mute=1`}
+            ref={iframeRef}
+            src={`https://www.youtube.com/embed/${getEmbedId(selectedVideo)}?rel=0&autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3&showinfo=0&color=white&mute=0`}
             title={selectedVideo.title}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
-            style={{ width: "100%", height: "100%", border: "none", zIndex: 1 }}
+            style={{ 
+              width: "100%", 
+              height: "100%", 
+              border: "none", 
+              zIndex: 1,
+            }}
           />
           
-          {/* Top Masking Layer to Hide YouTube Branding/Options - Desktop Only */}
-          {!isMobile && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 48, // Shorter to be less obstructive
-                // Glass mask: subtle blur hides the text/branding without a solid shadow bar
-                background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.3)",
-                backdropFilter: "blur(40px)",
-                WebkitBackdropFilter: "blur(40px)",
-                zIndex: 100, 
-                pointerEvents: "none",
-              }}
-            />
-          )}
+          {/* Top Masking Layer Removed per User Request */}
           
+          {/* CLICK SHIELDS: Always active, placed outside the fading overlay */}
+          {/* PROTECTIVE LAYER: Blocks exit links and End Screens while preserving Seek/Volume controls */}
+          
+          {/* Top Left Shield (Blocks Channel, Title) */}
+          <Box 
+            sx={{ 
+              position: "absolute", 
+              top: 0, left: 0, 
+              width: isMobile ? "88%" : "82%", 
+              height: isMobile ? "25%" : "20%", 
+              pointerEvents: "auto", zIndex: 10, bgcolor: "transparent"
+            }} 
+          />
+
+          {/* Bottom Left Shield (Blocks Share/Watch Later) */}
+          <Box 
+            sx={{ 
+              position: "absolute", 
+              bottom: 0, left: 0, width: "35%", height: isMobile ? "14%" : "10%", 
+              pointerEvents: "auto", zIndex: 10, bgcolor: "transparent"
+            }} 
+          />
+
+          {/* Bottom Right Shield (Blocks YouTube Logo link) */}
+          <Box 
+            sx={{ 
+              position: "absolute", 
+              bottom: 0, right: 0, width: "35%", height: isMobile ? "14%" : "10%", 
+              pointerEvents: "auto", zIndex: 10, bgcolor: "transparent"
+            }} 
+          />
+
+          {/* Center Shield (Blocks End-Screen cards and annotations + Toggles Playback) */}
+          <Box 
+            sx={{ 
+              position: "absolute", 
+              top: "50%", left: "50%",
+              transform: "translate( -50%, -50% )",
+              width: "85%", height: "65%", 
+              pointerEvents: "auto", 
+              zIndex: 10, 
+              bgcolor: "transparent",
+              cursor: "pointer"
+            }} 
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlayback();
+            }}
+          />
+
           <Box
             className="player-overlay"
             sx={{
@@ -321,20 +366,51 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
               pointerEvents: "none",
               opacity: 0,
               transition: "opacity 0.3s ease",
-              background: "linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.4) 100%)",
+              zIndex: 11, // Above shields for interaction
+              "&:hover": { opacity: 1 },
+              "&.visible": { opacity: 1 },
             }}
           >
-            <Box sx={{ position: "absolute", top: 16, right: 16, pointerEvents: "auto", display: "flex", gap: 1 }}>
-              {isMobile && (
-                 <IconButton onClick={toggleRotate} sx={{ color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" } }}>
-                    <ScreenRotationIcon />
+            {/* Right Side Utility Controls */}
+            <Box 
+              sx={{ 
+                position: "absolute", 
+                top: "50%", 
+                right: isMobile ? 8 : 12,
+                transform: "translateY(-50%)",
+                pointerEvents: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+                zIndex: 12
+              }}
+            >
+               {isMobile && (
+                 <IconButton 
+                   onClick={toggleRotate} 
+                   sx={{ 
+                     color: "#fff", 
+                     width: isMobile ? 32 : 38,
+                     height: isMobile ? 32 : 38,
+                     backgroundColor: isMobile ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.45)", 
+                     backdropFilter: "blur(6px)",
+                     border: "1px solid rgba(255,255,255,0.05)",
+                     "&:hover": { backgroundColor: "rgba(0,0,0,0.6)" },
+                     transition: "all 0.2s ease"
+                   }}
+                 >
+                    <ScreenRotationIcon sx={{ fontSize: isMobile ? 16 : 18 }} />
                  </IconButton>
-              )}
-              <IconButton onClick={toggleFullscreen} sx={{ color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" } }}>
-                {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-              </IconButton>
+               )}
             </Box>
           </Box>
+        </Box>
+
+        {/* Attribution Row */}
+        <Box sx={{ px: { xs: 2, md: 0 }, mb: 1.5, display: "flex", alignItems: "center", gap: 1, opacity: 0.6 }}>
+           <Typography sx={{ fontSize: "0.75rem", color: metaColor, fontWeight: 500 }}>
+             Content provided by YouTube
+           </Typography>
         </Box>
 
         {/* Video Info Container */}
@@ -342,7 +418,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           <Typography
             sx={{
               fontSize: { xs: "1.2rem", md: "1.7rem" },
-              fontWeight: 800,
+              fontWeight: 700,
               color: textColor,
               lineHeight: 1.3,
               mb: 2.5,
@@ -377,7 +453,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                 {selectedVideo.subTitle.charAt(0)}
               </Avatar>
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: "1rem", color: textColor, lineHeight: 1.2 }}>
+                <Typography sx={{ fontWeight: 600, fontSize: "1rem", color: textColor, lineHeight: 1.2 }}>
                   {selectedVideo.subTitle}
                 </Typography>
                 <Typography sx={{ fontSize: "0.8rem", color: metaColor, fontWeight: 500 }}>
@@ -390,7 +466,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                   ml: 1.5,
                   borderRadius: "24px",
                   textTransform: "none",
-                  fontWeight: 800,
+                  fontWeight: 600,
                   px: 2.5,
                   py: 0.6,
                   fontSize: "0.85rem",
@@ -500,16 +576,16 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
             >
               {selectedVideo.description || selectedVideo.subTitle + " brings you another high-quality video experience. Optimized for premium viewing. Don't forget to like and subscribe for more amazing content!"}
             </Typography>
-            <Button sx={{ p: 0, mt: 2, color: textColor, fontWeight: 800, textTransform: "none", opacity: 0.9 }}>Show more</Button>
+            <Button sx={{ p: 0, mt: 2, color: textColor, fontWeight: 600, textTransform: "none", opacity: 0.9 }}>Show more</Button>
           </Box>
 
           {/* Comments Section */}
           <Box sx={{ mt: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 4, mb: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 900, fontSize: "1.2rem" }}>842 Comments</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: "1.2rem" }}>842 Comments</Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: textColor, cursor: "pointer", opacity: 0.8, "&:hover": { opacity: 1 } }}>
                 <SortIcon />
-                <Typography sx={{ fontWeight: 800 }}>Sort by</Typography>
+                <Typography sx={{ fontWeight: 600 }}>Sort by</Typography>
               </Box>
             </Box>
 
@@ -599,44 +675,27 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
                 transition: "all 0.3s ease"
             }}
           >
-             <Box display="flex" alignItems="center" gap={1.2}>
-                <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.3px", color: textColor }}>Up Next</Typography>
-                <Chip 
-                  label="AUTOPLAY" 
+             <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.3px", color: textColor }}>Up Next</Typography>
+             
+             <Box sx={{ display: "flex", alignItems: "center", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", px: 1.5, py: 0.5, borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <Typography sx={{ fontSize: "11px", fontWeight: 800, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", letterSpacing: "1px" }}>AUTOPLAY</Typography>
+                <Switch 
                   size="small" 
+                  checked={autoPlayEnabled} 
+                  onChange={(e) => setAutoPlayEnabled(e.target.checked)}
                   sx={{ 
-                    height: 20, 
-                    fontSize: "9px", 
-                    fontWeight: 900, 
-                    bgcolor: isDark ? "rgba(255,77,77,0.15)" : "rgba(255,0,0,0.08)", 
-                    color: "#ff4d4d",
-                    letterSpacing: "0.5px",
-                    border: "1px solid rgba(255,77,77,0.2)"
+                    "& .MuiSwitch-switchBase.Mui-checked": { color: accentRed },
+                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: accentRed },
                   }} 
                 />
              </Box>
-             <FormControlLabel
-                control={
-                  <Switch 
-                    checked={autoPlayEnabled} 
-                    onChange={() => setAutoPlayEnabled(!autoPlayEnabled)} 
-                    size="small" 
-                    sx={{ 
-                      "& .MuiSwitch-switchBase.Mui-checked": { color: "#ff4d4d" }, 
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#ff4d4d", opacity: 0.5 } 
-                    }} 
-                  />
-                }
-                label=""
-                sx={{ mr: 0 }}
-             />
           </Box>
 
           {/* Series Playlist */}
           {seriesPlaylist.length > 0 && (
             <Box sx={{ mb: 5 }}>
               <Box sx={{ backgroundColor: "rgba(255,255,255,0.05)", p: 2, borderRadius: "20px 20px 0 0", borderBottom: `2px solid #ff4d4d`, backdropFilter: "blur(10px)" }}>
-                <Typography sx={{ fontWeight: 900, fontSize: "0.9rem", color: "#ff4d4d", textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "#ff4d4d", textTransform: "uppercase", letterSpacing: "1.5px" }}>
                   Series Episodes
                 </Typography>
               </Box>
@@ -647,7 +706,7 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           )}
 
           {/* Recommended Section */}
-          <Typography sx={{ fontWeight: 900, fontSize: "1.1rem", mb: 2.5, pl: 1 }}>Recommended</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", mb: 2.5, pl: 1 }}>Recommended</Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {playlist.map((video) => renderVideoRow(video, false))}
           </Box>
@@ -686,14 +745,14 @@ const VideoPage: React.FC<VideoPageProps> = ({ isSidebarExpanded }) => {
           </Box>
           {isCurrent && (
             <Box sx={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-              <PlayCircleOutlineIcon sx={{ color: "#fff", fontSize: 32 }} />
+              <PlayArrowIcon sx={{ color: "#fff", fontSize: 32 }} />
             </Box>
           )}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
           <Typography
             sx={{
-              fontWeight: 800,
+              fontWeight: 600,
               fontSize: "0.95rem",
               color: isCurrent ? "#ff4d4d" : textColor,
               lineHeight: 1.4,

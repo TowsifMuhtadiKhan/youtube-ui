@@ -10,7 +10,9 @@ import {
   Avatar,
   IconButton,
   Button,
+  Switch,
 } from "@mui/material";
+import { useThemeMode } from "./ThemeContext";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -142,7 +144,7 @@ const VideoCard: React.FC<{ video: YouTubeVideoInfo; titleColor: string; metaCol
           <Typography
             sx={{
               color: titleColor,
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: "14px",
               lineHeight: 1.3,
               mb: 0.5,
@@ -178,6 +180,8 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDark = theme.palette.mode === "dark";
+  const { primaryColor } = useThemeMode();
+  const [autoplay, setAutoplay] = useState(true);
   const categoryScrollRef = React.useRef<HTMLDivElement>(null);
   const carouselRefs = React.useRef<{ [key: string]: HTMLDivElement | null }>({});
   
@@ -251,7 +255,7 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
     loadVideos();
   }, [selectedCategory]);
 
-  const sidebarWidth = isMobile ? 0 : (isSidebarExpanded ? 228 : 100); // (16 offset + 200/72 width + 12 gap)
+  const sidebarWidth = isMobile ? 0 : (isSidebarExpanded ? 242 : 104);
 
   const metaColor = isDark ? "#888888" : "#606060";
   const titleColor = isDark ? "#ffffff" : "#0f0f0f";
@@ -262,7 +266,7 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
     <Box
       sx={{
         marginLeft: `${sidebarWidth}px`,
-        marginTop: "92px",
+        marginTop: "88px",
         marginRight: isMobile ? 0 : "8px",
         marginBottom: isMobile ? "80px" : "8px",
         minHeight: "calc(100vh - 100px)",
@@ -278,7 +282,13 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
         pt: 2,
         pb: 4,
         overflowX: "hidden",
-        position: "relative"
+        position: "relative",
+        "@media (orientation: landscape) and (max-height: 500px)": {
+          marginTop: 0,
+          marginLeft: "0 !important",
+          marginRight: 0,
+          borderRadius: 0,
+        },
       }}
     >
       {/* Dynamic Category Chips */}
@@ -322,14 +332,29 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
                     : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"),
                   transform: "translateY(-1px)"
                 },
-                borderRadius: "20px", // Pill shape
+                borderRadius: "20px",
                 transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
                 border: selectedCategory === cat ? "none" : (isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.05)"),
                 flexShrink: 0,
-                boxShadow: (selectedCategory === cat && isDark) ? "0 4px 12px rgba(0,0,0,0.4)" : "none",
               }}
             />
           ))}
+
+          {/* Autoplay Toggle Segment */}
+          {!isMobile && (
+            <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", px: 1.5, py: 0.5, borderRadius: "20px", border: "1px solid rgba(255,255,255,0.08)" }}>
+               <Typography sx={{ fontSize: "11px", fontWeight: 800, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", letterSpacing: "1px" }}>AUTOPLAY</Typography>
+               <Switch 
+                 size="small" 
+                 checked={autoplay} 
+                 onChange={(e) => setAutoplay(e.target.checked)}
+                 sx={{ 
+                   "& .MuiSwitch-switchBase.Mui-checked": { color: primaryColor },
+                   "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: primaryColor },
+                 }} 
+               />
+            </Box>
+          )}
         </Box>
         {/* Left Arrow Button for Categories */}
         {showCategoryLeft && (
@@ -437,12 +462,12 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
               }}>
                 <Box display="flex" alignItems="center" gap={1} mb={1.5}>
                   <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#ff4d4d", boxShadow: "0 0 10px #ff0000" }} />
-                  <Typography sx={{ color: "#ff4d4d", fontWeight: 900, fontSize: "14px", letterSpacing: 2.5, textTransform: "uppercase" }}>Trending Selection</Typography>
+                  <Typography sx={{ color: "#ff4d4d", fontWeight: 700, fontSize: "14px", letterSpacing: 2.5, textTransform: "uppercase" }}>Trending Selection</Typography>
                 </Box>
                 <Typography sx={{ 
                   color: isDark ? "#fff" : "#000", 
                   fontSize: { xs: "28px", md: "48px" }, 
-                  fontWeight: 900, 
+                  fontWeight: 700, 
                   maxWidth: "900px", 
                   lineHeight: 1, 
                   mb: 4, 
@@ -498,7 +523,7 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
           {/* High-Density Row Carousels */}
           {Object.entries(homeSections).map(([title, videos]) => (
             <Box key={title} mb={4} sx={{ position: "relative" }}>
-              <Typography sx={{ color: titleColor, fontWeight: 900, mb: 2, fontSize: "18px", letterSpacing: -0.5 }}>{title}</Typography>
+              <Typography sx={{ color: titleColor, fontWeight: 700, mb: 2, fontSize: "18px", letterSpacing: -0.5 }}>{title}</Typography>
               <Box
                 ref={(el: HTMLDivElement | null) => { carouselRefs.current[title] = el; }}
                 onScroll={() => updateCarouselArrows(title)}
@@ -603,7 +628,7 @@ const MainContent: React.FC<MainContentProps> = ({ isSidebarExpanded }) => {
         </Box>
       ) : (
         <Box mt={2} sx={{ width: "100%" }}>
-          <Typography sx={{ color: titleColor, fontWeight: 900, mb: 3, fontSize: "20px", letterSpacing: -0.5 }}>{selectedCategory}</Typography>
+          <Typography sx={{ color: titleColor, fontWeight: 700, mb: 3, fontSize: "20px", letterSpacing: -0.5 }}>{selectedCategory}</Typography>
           <Grid container spacing={3}>
             {videoData.map((video) => (
               <Grid key={video.id} size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2 }}>

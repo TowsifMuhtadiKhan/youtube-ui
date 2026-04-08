@@ -7,11 +7,15 @@ type ColorMode = "light" | "dark";
 interface ThemeContextType {
     colorMode: ColorMode;
     toggleColorMode: () => void;
+    primaryColor: string;
+    setPrimaryColor: (color: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
     colorMode: "dark",
     toggleColorMode: () => { },
+    primaryColor: "#ff0000",
+    setPrimaryColor: () => { },
 });
 
 export const useThemeMode = () => useContext(ThemeContext);
@@ -22,10 +26,18 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return (stored as ColorMode) || "dark";
     });
 
+    const [primaryColor, setPrimaryColor] = useState<string>(() => {
+        return localStorage.getItem("tomtube-primary-color") || "#ff0000";
+    });
+
     useEffect(() => {
         localStorage.setItem("tomtube-theme", colorMode);
+        localStorage.setItem("tomtube-primary-color", primaryColor);
+
         // Update CSS root vars
         const root = document.documentElement;
+        root.style.setProperty("--primary-color", primaryColor);
+        
         if (colorMode === "dark") {
             root.style.setProperty("--bg-primary", "#0f0f0f");
             root.style.setProperty("--bg-secondary", "#161616");
@@ -60,7 +72,7 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             createTheme({
                 palette: {
                     mode: colorMode,
-                    primary: { main: "#ff0000" },
+                    primary: { main: primaryColor },
                     background: {
                         default: colorMode === "dark" ? "#0f0f0f" : "#ffffff",
                         paper: colorMode === "dark" ? "#1a1a1a" : "#f8f8f8",
@@ -128,7 +140,7 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     return (
-        <ThemeContext.Provider value={{ colorMode, toggleColorMode }}>
+        <ThemeContext.Provider value={{ colorMode, toggleColorMode, primaryColor, setPrimaryColor }}>
             <MuiThemeProvider theme={muiTheme}>
                 <CssBaseline />
                 {children}

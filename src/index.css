@@ -95,3 +95,30 @@ a { color: inherit; text-decoration: none; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* Hide header on mobile landscape to maximize space */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  header, [component="header"], .MuiBox-root[component="header"],
+  .MuiDrawer-root, .MuiDrawer-paper {
+    display: none !important;
+  }
+  
+  main, .MuiBox-root:has(> .fade-in), .MuiBox-root:has(> .cinematic-ambient) {
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+  }
+}
+
+/* Specific rule for the manual rotation toggle and landscape state */
+body.video-rotated header,
+body.video-rotated [component="header"],
+body.video-rotated .MuiDrawer-root,
+body.video-rotated .MuiDrawer-paper {
+  display: none !important;
+}
+
+body.video-rotated main, 
+body.video-rotated .MuiBox-root {
+  margin-top: 0 !important;
+  margin-left: 0 !important;
+}

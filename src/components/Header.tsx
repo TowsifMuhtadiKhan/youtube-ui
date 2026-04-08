@@ -18,6 +18,7 @@ import {
   Menu,
   MenuItem,
   Divider,
+  Popover,
 } from "@mui/material";
 import { Menu as MenuIcon } from "@mui/icons-material";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
@@ -74,14 +75,26 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   const auth = useAuth();
-  const { toggleColorMode } = useThemeMode();
+  const { toggleColorMode, primaryColor, setPrimaryColor } = useThemeMode();
   const open = Boolean(anchorEl);
+  const notesOpen = Boolean(notificationsAnchorEl);
+
+  const dummyNotifications = [
+    { title: "New Series Added!", info: "Check out 'Lost & Found' in Drive" },
+    { title: "Video Processed", info: "Your latest upload is now in 4K" },
+    { title: "Quota Reset", info: "YouTube API quota refreshed" }
+  ];
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+    setAnchorEl(anchorEl ? null : event.currentTarget);
+  };
+  const handleNotesClick = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationsAnchorEl(notificationsAnchorEl ? null : event.currentTarget);
   };
   const handleClose = () => setAnchorEl(null);
+  const handleNotesClose = () => setNotificationsAnchorEl(null);
   const handleLogout = () => {
     auth.logout();
     handleClose();
@@ -137,7 +150,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
   };
 
   // Sync with Content spacing (matches MainContainer/VideoPage)
-  const sidebarWidthValue = isMobile ? 0 : (isSidebarExpanded ? 228 : 100);
+  const sidebarWidthValue = isMobile ? 0 : (isSidebarExpanded ? 210 : 72);
 
   return (
     <Box
@@ -192,13 +205,13 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
                 sx={{
                   width: 28,
                   height: 28,
-                  bgcolor: "#ff0000",
+                  bgcolor: primaryColor,
                   borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   boxShadow: "none",
-                  background: "linear-gradient(135deg, #ff0000, #cc0000)",
+                  background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)`,
                 }}
               >
                 <Box
@@ -239,7 +252,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
                 boxShadow: "none",
               }}
             >
-              <Box sx={{ pl: 2, color: searchFocused ? "#ff4d4d" : "#888", display: "flex", alignItems: "center" }}>
+              <Box sx={{ pl: 2, color: searchFocused ? primaryColor : "#888", display: "flex", alignItems: "center" }}>
                 <SearchIcon sx={{ fontSize: 20 }} />
               </Box>
               <TextField
@@ -309,28 +322,72 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
           <Box display="flex" alignItems="center" gap={1}>
             <Tooltip title="Toggle Theme">
               <IconButton onClick={toggleColorMode} sx={{ color: isDark ? "#fff" : "#000", bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}>
-                {isDark ? <LightModeIcon /> : <DarkModeIcon />}
+                {isDark ? <LightModeIcon sx={{ fontSize: 20 }} /> : <DarkModeIcon sx={{ fontSize: 20 }} />}
               </IconButton>
             </Tooltip>
+
             {!isMobile && (
               <Tooltip title="Notifications">
-                <IconButton sx={{ color: isDark ? "#fff" : "#000" }}>
-                  <Badge badgeContent={3} color="error">
-                    <NotificationsNoneOutlinedIcon />
+                <IconButton 
+                  onClick={handleNotesClick}
+                  sx={{ color: isDark ? "#fff" : "#000" }}>
+                  <Badge 
+                    badgeContent={3} 
+                    sx={{ 
+                      "& .MuiBadge-badge": { 
+                        bgcolor: primaryColor, 
+                        color: "#fff" 
+                      } 
+                    }}
+                  >
+                    <NotificationsNoneOutlinedIcon sx={{ fontSize: 22 }} />
                   </Badge>
                 </IconButton>
               </Tooltip>
             )}
+            
+            <Popover
+              open={notesOpen}
+              anchorEl={notificationsAnchorEl}
+              onClose={handleNotesClose}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+              PaperProps={{ sx: { mt: 1.5, p: 2, borderRadius: "16px", minWidth: 280, bgcolor: isDark ? "#121212" : "#fff", border: "1px solid rgba(255,255,255,0.08)" } }}
+            >
+              <Typography sx={{ fontWeight: 600, mb: 2, px: 1 }}>Notifications</Typography>
+              <List dense>
+                {dummyNotifications.map((n, i) => (
+                  <ListItemButton key={i} sx={{ borderRadius: "10px", mb: 0.5 }}>
+                    <ListItemText primary={n.title} secondary={n.info} primaryTypographyProps={{ sx: { fontWeight: 500, fontSize: "13px" } }} />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Popover>
             <IconButton onClick={handleAvatarClick} sx={{ p: 0.5 }}>
-               <Avatar sx={{ width: 38, height: 38, border: "2px solid #ff4d4d", background: "#ff4d4d", fontWeight: 800, fontSize: "15px" }}>T</Avatar>
+               <Avatar sx={{ width: 38, height: 38, border: `2px solid ${primaryColor}`, background: primaryColor, fontWeight: 800, fontSize: "15px" }}>T</Avatar>
             </IconButton>
-            <Menu anchorEl={anchorEl} open={open} onClose={handleClose} PaperProps={{ sx: { mt: 1.5, minWidth: 220, bgcolor: isDark ? "#111" : "#fff", borderRadius: "18px", boxShadow: "0 10px 40px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)" } }}>
+            <Menu anchorEl={anchorEl} open={open} onClose={handleClose} PaperProps={{ sx: { mt: 1.5, minWidth: 240, bgcolor: isDark ? "#111" : "#fff", borderRadius: "18px", boxShadow: "0 10px 40px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)" } }}>
                <Box sx={{ px: 2.5, py: 2 }}>
-                 <Typography sx={{ fontWeight: 800, fontSize: "15px", color: isDark ? "#fff" : "#000" }}>Towsif Muhtadi Khan</Typography>
+                 <Typography sx={{ fontWeight: 600, fontSize: "15px", color: isDark ? "#fff" : "#000" }}>Towsif Muhtadi Khan</Typography>
                  <Typography sx={{ fontSize: "12px", color: "gray" }}>Premium Account</Typography>
                </Box>
                <Divider sx={{ opacity: 0.1 }} />
-               <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: "#ff4d4d", fontWeight: 700 }}>
+               
+               <Box sx={{ p: 2 }}>
+                  <Typography variant="caption" sx={{ color: "gray", fontWeight: 600, mb: 1, display: "block" }}>Branding Color</Typography>
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    {["#ff0000", "#3ea6ff", "#9d4edd", "#2d6a4f", "#ff9f1c"].map(c => (
+                      <Box 
+                        key={c} 
+                        onClick={() => setPrimaryColor(c)}
+                        sx={{ width: 22, height: 22, borderRadius: "50%", bgcolor: c, cursor: "pointer", border: primaryColor === c ? "2px solid white" : "none", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }} 
+                      />
+                    ))}
+                  </Box>
+               </Box>
+               <Divider sx={{ opacity: 0.1 }} />
+
+               <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: primaryColor, fontWeight: 600 }}>
                  <LogoutIcon sx={{ fontSize: 20, mr: 1.5 }} /> Logout
                </MenuItem>
             </Menu>

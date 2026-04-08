@@ -12,13 +12,14 @@ import {
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import driveData from "./driveData.json";
-import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import ScreenRotationIcon from "@mui/icons-material/ScreenRotation";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MovieIcon from "@mui/icons-material/Movie";
 import LiveTvIcon from "@mui/icons-material/LiveTv";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import { useThemeMode } from "./ThemeContext";
 
 interface DrivePlayerProps {
   isSidebarExpanded: boolean;
@@ -52,16 +53,18 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
   const navigate = useNavigate();
+  const { primaryColor } = useThemeMode();
 
   const params = new URLSearchParams(location.search);
   const driveUrl = params.get("url") || "";
 
   const [currentVideo, setCurrentVideo] = useState<CurrentVideo>(null);
   const [loading, setLoading] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isRotated, setIsRotated] = useState(false);
 
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const sidebarWidth = isMobile ? 0 : isSidebarExpanded ? 232 : 72;
+  const sidebarWidthVal = isSidebarExpanded ? 242 : 104;
+  const totalMarginLeft = isMobile ? 0 : sidebarWidthVal;
   const bg = isDark ? "#0f0f0f" : "#ffffff";
   const cardBg = isDark ? "#1a1a1a" : "#f5f5f5";
   const textColor = isDark ? "#f1f1f1" : "#0f0f0f";
@@ -99,12 +102,26 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
     setLoading(false);
   }, [driveUrl]);
 
+  const toggleRotate = async () => {
+    if (!isRotated) {
+      if (isMobile) {
+        try { await ScreenOrientation.lock({ orientation: "landscape" }); } catch { /* ignore */ }
+      }
+      setIsRotated(true);
+    } else {
+      if (isMobile) {
+        try { await ScreenOrientation.unlock(); } catch { /* ignore */ }
+      }
+      setIsRotated(false);
+    }
+  };
+
   if (!driveUrl) {
     return (
       <Box
         sx={{
-          marginLeft: isFullscreen ? 0 : `${sidebarWidth}px`,
-          marginTop: "64px",
+          marginLeft: `${totalMarginLeft}px`,
+          marginTop: "88px",
           minHeight: "calc(100vh - 64px)",
           backgroundColor: bg,
           display: "flex",
@@ -133,66 +150,79 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
   return (
     <Box
       sx={{
-        marginLeft: isFullscreen ? 0 : `${sidebarWidth}px`,
-        marginTop: isFullscreen ? 0 : "64px",
-        minHeight: isFullscreen ? "100vh" : "calc(100vh - 64px)",
-        backgroundColor: isFullscreen ? "#000" : bg,
-        transition: "margin-left 0.25s ease, background-color 0.3s ease",
-        position: isFullscreen ? "fixed" : "relative",
-        inset: isFullscreen ? 0 : "auto",
-        zIndex: isFullscreen ? 1500 : "auto",
+        marginLeft: isRotated ? 0 : `${totalMarginLeft}px`,
+        marginTop: isRotated ? 0 : "88px",
+        minHeight: isRotated ? "100vh" : "calc(100vh - 88px)",
+        backgroundColor: "transparent",
+        transition: "all 0.4s ease",
+        position: isRotated ? "fixed" : "relative",
+        inset: isRotated ? 0 : "auto",
+        zIndex: isRotated ? 1500 : "auto",
+        display: "flex",
+        flexDirection: isMobile || isRotated ? "column" : "row",
+        alignItems: "flex-start",
+        paddingLeft: isRotated ? 0 : { xs: 0, md: "24px" },
+        paddingRight: isRotated ? 0 : { xs: 0, md: "24px" },
+        gap: isRotated ? 0 : 4,
       }}
     >
       <Box
         sx={{
-          maxWidth: isFullscreen ? "100%" : 1100,
-          margin: "0 auto",
-          px: isFullscreen ? 0 : { xs: 2, sm: 3, md: 4 },
-          py: isFullscreen ? 0 : 3,
-          height: isFullscreen ? "100%" : "auto",
+          position: "fixed",
+          inset: 0,
+          zIndex: -1,
+          pointerEvents: "none",
+          backgroundColor: isDark ? "#080808" : bg,
+          backgroundImage: isDark && !isRotated 
+            ? `radial-gradient(circle at 30% 30%, ${primaryColor}15, transparent 70%)` 
+            : "none",
+        }}
+      />
+
+      <Box
+        sx={{
+          flex: isRotated || isMobile ? "none" : "1 1 0",
+          minWidth: 0,
+          width: "100%",
+          maxWidth: isRotated || isMobile ? "100%" : `calc(100vw - 380px - ${totalMarginLeft + 96}px)`,
+          pt: isRotated ? 0 : { xs: 2, md: 1 },
+          pb: isRotated ? 0 : 6,
           display: "flex",
           flexDirection: "column",
-          gap: isFullscreen ? 0 : 3,
+          gap: isRotated ? 0 : 3,
         }}
       >
-        {/* Back button */}
-        {!isFullscreen && (
-          <Button
-            variant="text"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(-1)}
-            sx={{
-              color: metaColor,
-              textTransform: "none",
-              fontSize: "13px",
-              alignSelf: "flex-start",
-              borderRadius: "20px",
-              px: 1.5,
-              "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
-            }}
-          >
-            Back
-          </Button>
-        )}
 
-        {/* Player  */}
         <Box
           sx={{
-            position: "relative",
-            paddingTop: isFullscreen ? "100vh" : "56.25%",
-            borderRadius: isFullscreen ? 0 : "16px",
+            borderRadius: isRotated ? 0 : "24px",
             overflow: "hidden",
             backgroundColor: "#000",
-            boxShadow: isFullscreen
+            border: isRotated ? "none" : `1px solid ${primaryColor}33`,
+            boxShadow: isRotated
               ? "none"
               : isDark
-                ? "0 2px 30px rgba(0,0,0,0.8)"
-                : "0 4px 20px rgba(0,0,0,0.15)",
+                ? `0 30px 100px -20px ${primaryColor}25, 0 15px 50px rgba(0,0,0,0.9)`
+                : "0 10px 40px rgba(0,0,0,0.1)",
+                
+            ...(isRotated ? {
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              width: "100vh",
+              height: "100vw",
+              transform: "translate(-50%, -50%) rotate(90deg)",
+              transformOrigin: "center center",
+              margin: 0,
+              zIndex: 99999,
+            } : {
+              position: "relative",
+              paddingTop: "56.25%",
+            }),
           }}
         >
-          {/* Fullscreen toggle */}
           <IconButton
-            onClick={() => setIsFullscreen(!isFullscreen)}
+            onClick={toggleRotate}
             sx={{
               position: "absolute",
               top: 12,
@@ -205,11 +235,7 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
               "&:hover": { backgroundColor: "rgba(0,0,0,0.8)" },
             }}
           >
-            {isFullscreen ? (
-              <FullscreenExitIcon fontSize="small" />
-            ) : (
-              <FullscreenIcon fontSize="small" />
-            )}
+            <ScreenRotationIcon fontSize="small" />
           </IconButton>
 
           {loading ? (
@@ -239,8 +265,7 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
           )}
         </Box>
 
-        {/* Info section  */}
-        {!isFullscreen && (
+        {!isRotated && (
           <Box
             sx={{
               backgroundColor: cardBg,
@@ -257,25 +282,23 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
               </Box>
             ) : currentVideo ? (
               <>
-                {/* Series / episode label */}
                 {currentVideo.type === "episode" && (
                   <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-                    <LiveTvIcon sx={{ color: "#ff0000", fontSize: 18 }} />
-                    <Typography sx={{ color: "#ff0000", fontSize: "13px", fontWeight: 600 }}>
+                    <LiveTvIcon sx={{ color: primaryColor, fontSize: 18 }} />
+                    <Typography sx={{ color: primaryColor, fontSize: "13px", fontWeight: 600 }}>
                       {currentVideo.seriesTitle} — Episode {currentVideo.episode_number}
                     </Typography>
                   </Box>
                 )}
                 {currentVideo.type === "movie" && (
                   <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-                    <MovieIcon sx={{ color: "#ff0000", fontSize: 18 }} />
-                    <Typography sx={{ color: "#ff0000", fontSize: "13px", fontWeight: 600 }}>
+                    <MovieIcon sx={{ color: primaryColor, fontSize: 18 }} />
+                    <Typography sx={{ color: primaryColor, fontSize: "13px", fontWeight: 600 }}>
                       Movie
                     </Typography>
                   </Box>
                 )}
 
-                {/* Title */}
                 <Typography
                   sx={{
                     fontWeight: 800,
@@ -289,7 +312,6 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
                   {currentVideo.title}
                 </Typography>
 
-                {/* Metadata chips */}
                 <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap" mb={2}>
                   {currentVideo.duration && (
                     <Box display="flex" alignItems="center" gap={0.5}>
@@ -313,12 +335,12 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
                       label={g}
                       size="small"
                       sx={{
-                        backgroundColor: "rgba(255,0,0,0.12)",
-                        color: "#ff0000",
+                        backgroundColor: `${primaryColor}22`,
+                        color: primaryColor,
                         fontSize: "11px",
                         fontWeight: 600,
                         height: 22,
-                        border: "1px solid rgba(255,0,0,0.2)",
+                        border: `1px solid ${primaryColor}33`,
                       }}
                     />
                   ))}
@@ -326,7 +348,6 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
 
                 <Divider sx={{ borderColor, mb: 2 }} />
 
-                {/* Description */}
                 <Typography
                   sx={{
                     color: metaColor,
@@ -345,6 +366,44 @@ export const DrivePlayer: React.FC<DrivePlayerProps> = ({ isSidebarExpanded }) =
           </Box>
         )}
       </Box>
+
+      {/* ── RIGHT COLUMN: UP NEXT ── */}
+      {!isRotated && !isMobile && currentVideo && (
+        <Box sx={{ flex: "0 0 380px", display: "flex", flexDirection: "column", pt: 1, pb: 4 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", mb: 2, color: textColor }}>
+            More to Watch
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {driveData.movies
+              .filter(m => m.drive_url !== currentVideo?.drive_url)
+              .slice(0, 10)
+              .map(movie => (
+                <Box 
+                    key={movie.id} 
+                    onClick={() => navigate(`/movies/player?url=${encodeURIComponent(movie.drive_url)}`)}
+                    sx={{ 
+                      display: "flex", gap: 1.5, cursor: "pointer", 
+                      "&:hover .thumb": { transform: "scale(1.05)" },
+                      "&:hover .title": { color: primaryColor }
+                    }}
+                >
+                    <Box sx={{ width: 140, height: 80, borderRadius: "10px", overflow: "hidden", flexShrink: 0, position: "relative" }}>
+                        <Box className="thumb" sx={{ transition: "transform 0.3s ease", position: "absolute", inset: 0, backgroundImage: `url(${movie.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                    </Box>
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography className="title" sx={{ transition: "color 0.2s", color: textColor, fontWeight: 700, fontSize: "0.9rem", lineHeight: 1.2, mb: 0.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                            {movie.title}
+                        </Typography>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <Chip label="MOVIE" size="small" sx={{ height: 16, fontSize: "9px", fontWeight: 700, bgcolor: `${primaryColor}22`, color: primaryColor }} />
+                          <Typography sx={{ color: metaColor, fontSize: "0.75rem" }}>{movie.duration}</Typography>
+                        </Box>
+                    </Box>
+                </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 };
