@@ -90,3 +90,17 @@ export const addItemToPlaylist = async (
   await setList(userId, next);
   return updatedPlaylist;
 };
+
+export const listAllPlaylists = async (): Promise<Playlist[]> => {
+  if (hasKv()) {
+    const keys = await kv.keys("playlists:user:*");
+    if (!keys.length) {
+      return [];
+    }
+
+    const all = await Promise.all(keys.map((key) => kv.get<Playlist[]>(key)));
+    return all.flatMap((entry) => entry || []);
+  }
+
+  return Array.from(inMemory.values()).flatMap((entry) => entry);
+};
