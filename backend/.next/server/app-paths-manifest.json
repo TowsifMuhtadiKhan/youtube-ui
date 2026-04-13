@@ -1,9 +1,7 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
   "/api/auth/login/route": "app/api/auth/login/route.js",
   "/api/auth/signup/route": "app/api/auth/signup/route.js",
-  "/api/health/route": "app/api/health/route.js",
-  "/api/playlists/[playlistId]/items/route": "app/api/playlists/[playlistId]/items/route.js",
   "/api/playlists/route": "app/api/playlists/route.js",
-  "/page": "app/page.js"
+  "/api/health/route": "app/api/health/route.js",
+  "/api/playlists/[playlistId]/items/route": "app/api/playlists/[playlistId]/items/route.js"
 }
