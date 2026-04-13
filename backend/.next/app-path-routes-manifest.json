@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/auth/login/route": "/api/auth/login",
+  "/api/auth/signup/route": "/api/auth/signup",
+  "/api/health/route": "/api/health",
+  "/api/playlists/[playlistId]/items/route": "/api/playlists/[playlistId]/items",
+  "/api/playlists/route": "/api/playlists",
+  "/page": "/"
+}
