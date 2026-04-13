@@ -11,7 +11,10 @@ export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const origin = request.headers.get("origin");
-  const adminUsername = request.headers.get("x-admin-user") || "";
+  const adminUsername =
+    request.nextUrl.searchParams.get("adminUser") ||
+    request.headers.get("x-admin-user") ||
+    "";
 
   if (!adminUsername) {
     return withCors(

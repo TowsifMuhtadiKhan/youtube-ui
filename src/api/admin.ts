@@ -8,11 +8,9 @@ export interface AdminUser {
 const API_BASE = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3000";
 
 export const fetchAdminUsers = async (adminUsername: string): Promise<AdminUser[]> => {
-  const response = await fetch(`${API_BASE}/api/admin/users`, {
-    headers: {
-      "x-admin-user": adminUsername,
-    },
-  });
+  const response = await fetch(
+    `${API_BASE}/api/admin/users?adminUser=${encodeURIComponent(adminUsername)}`,
+  );
 
   const data = (await response.json()) as { users?: AdminUser[]; error?: string };
   if (!response.ok || !data.users) {
