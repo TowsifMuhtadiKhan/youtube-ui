@@ -46,6 +46,7 @@ Set `ALLOWED_ORIGINS` in `backend/.env.local`, for example:
 
 ```env
 ALLOWED_ORIGINS=http://localhost:5173
+ADMIN_SIGNUP_CODE=your-local-admin-code
 ```
 
 Set frontend backend URL in root `.env`:
@@ -63,6 +64,7 @@ VITE_BACKEND_API_URL=http://localhost:3000
    - Output: Next.js default
 4. Environment variables in Vercel project:
    - `ALLOWED_ORIGINS=https://YOUR-NETLIFY-SITE.netlify.app`
+   - `ADMIN_SIGNUP_CODE=YOUR_SECRET_ADMIN_CODE`
 5. Optional persistence (recommended): attach Vercel KV to this backend project.
    - When KV is attached, `KV_REST_API_URL` and `KV_REST_API_TOKEN` are injected automatically.
    - Without KV, backend uses in-memory storage (resets on cold starts/redeploy).
@@ -88,6 +90,18 @@ VITE_BACKEND_API_URL=https://your-backend-name.vercel.app
 
 ## API Request Examples
 
+Create admin account:
+
+```bash
+curl -X POST https://your-backend-name.vercel.app/api/auth/signup \
+   -H "content-type: application/json" \
+   -d '{"username":"admin@example.com","password":"Admin123!","role":"admin","adminCode":"YOUR_SECRET_ADMIN_CODE"}'
+```
+
+Open admin view in frontend:
+
+`https://your-frontend.netlify.app/admin`
+
 Create playlist:
 
 ```bash
@@ -109,3 +123,7 @@ curl -X POST https://your-backend-name.vercel.app/api/playlists/PLAYLIST_ID/item
 - This playlist flow does not require YouTube Data API key/quota.
 - oEmbed can still fail for unavailable/private/restricted videos.
 - If you need fully durable multi-user auth + database, next step is adding Supabase/Postgres auth and tables.
+- Backend scripts:
+   - `npm run dev` for development.
+   - `npm run start` now builds and starts production server in one command.
+   - `npm run start:prod` starts from existing build only.

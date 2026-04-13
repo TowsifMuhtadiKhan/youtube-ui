@@ -80,6 +80,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
   const { toggleColorMode, primaryColor, setPrimaryColor } = useThemeMode();
   const open = Boolean(anchorEl);
   const notesOpen = Boolean(notificationsAnchorEl);
+  const displayName = auth.user || "User";
+  const displayInitial = displayName.charAt(0).toUpperCase();
 
   const dummyNotifications = [
     { title: "New Series Added!", info: "Check out 'Lost & Found' in Drive" },
@@ -364,12 +366,12 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
               </List>
             </Popover>
             <IconButton onClick={handleAvatarClick} sx={{ p: 0.5 }}>
-               <Avatar sx={{ width: 38, height: 38, border: `2px solid ${primaryColor}`, background: primaryColor, fontWeight: 800, fontSize: "15px" }}>T</Avatar>
+               <Avatar sx={{ width: 38, height: 38, border: `2px solid ${primaryColor}`, background: primaryColor, fontWeight: 800, fontSize: "15px" }}>{displayInitial}</Avatar>
             </IconButton>
             <Menu anchorEl={anchorEl} open={open} onClose={handleClose} PaperProps={{ sx: { mt: 1.5, minWidth: 240, bgcolor: isDark ? "#111" : "#fff", borderRadius: "18px", boxShadow: "0 10px 40px rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)" } }}>
                <Box sx={{ px: 2.5, py: 2 }}>
-                 <Typography sx={{ fontWeight: 600, fontSize: "15px", color: isDark ? "#fff" : "#000" }}>Towsif Muhtadi Khan</Typography>
-                 <Typography sx={{ fontSize: "12px", color: "gray" }}>Premium Account</Typography>
+                 <Typography sx={{ fontWeight: 600, fontSize: "15px", color: isDark ? "#fff" : "#000" }}>{displayName}</Typography>
+                 <Typography sx={{ fontSize: "12px", color: "gray" }}>{auth.isAdmin ? "Admin Account" : "User Account"}</Typography>
                </Box>
                <Divider sx={{ opacity: 0.1 }} />
                

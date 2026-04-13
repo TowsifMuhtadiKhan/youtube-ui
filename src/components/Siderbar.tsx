@@ -19,8 +19,10 @@ import {
   PlaylistPlay as PlaylistPlayIcon,
   WatchLater as WatchLaterIcon,
   ThumbUpAlt as ThumbUpAltIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
 } from "@mui/icons-material";
 import { useThemeMode } from "./ThemeContext";
+import { useAuth } from "./Auth/AuthContext";
 
 interface SidebarProps {
   isSidebarExpanded: boolean;
@@ -34,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDark = theme.palette.mode === "dark";
   const { primaryColor } = useThemeMode();
+  const { isAdmin, user, role } = useAuth();
 
   const sections = [
     { icon: <HomeIcon />, label: "Home", path: "/home" },
@@ -50,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   ];
 
   const lastSections = [
+    ...(isAdmin ? [{ icon: <AdminPanelSettingsIcon />, label: "Dashboard", path: "/admin" }] : []),
     { icon: <SettingsIcon />, label: "Settings", path: "/settings" },
     { icon: <AndroidIcon sx={{ color: "#3DDC84" }} />, label: "Download App", path: "https://drive.google.com/drive/folders/1g6IDpBA6GNOas-CTL9ZjOOcQUrhoc17p", external: true },
   ];
@@ -63,6 +67,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const bgActive = `${primaryColor}15`;
   const iconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)";
   const textColor = isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)";
+  const userCardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+  const userMetaColor = isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.6)";
 
   const renderSection = (
     items: Array<{ icon: any; label: string; path: string; external?: boolean }>,
@@ -187,16 +193,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
       {renderSection(lastSections)}
 
       {/* Credit Footer */}
-      <Box sx={{ mt: "auto", px: isSidebarExpanded ? 3 : 1, py: 2, textAlign: "center", opacity: 0.4 }}>
+      <Box sx={{ mt: "auto", px: isSidebarExpanded ? 2 : 1, py: 2, textAlign: "center" }}>
         {isSidebarExpanded ? (
-          <>
-            <Typography sx={{ fontSize: "11px", fontWeight: 600, color: textColor, mb: 0.5 }}>
-              Towsif Muhtadi Khan
+          <Box
+            sx={{
+              backgroundColor: userCardBg,
+              border: `1px solid ${glassBorder}`,
+              borderRadius: "12px",
+              px: 1.5,
+              py: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: textColor,
+                mb: 0.5,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {user || "Guest User"}
             </Typography>
-            <Typography sx={{ fontSize: "10px", color: textColor, opacity: 0.8 }}>
-              © 2026 • v 1.0.2
+            <Typography sx={{ fontSize: "10px", color: userMetaColor }}>
+              <Box component="span" sx={{ color: primaryColor, fontWeight: 700 }}>
+                {(role || "user").toUpperCase()}
+              </Box>{" "}
+              • v 1.0.2
             </Typography>
-          </>
+          </Box>
         ) : (
           <Typography sx={{ fontSize: "9px", fontWeight: 800, color: textColor }}>
             v1.0.2

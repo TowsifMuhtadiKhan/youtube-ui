@@ -17,6 +17,7 @@ import { DrivePlayer } from "./components/DrivePlayer";
 import ShortsPage from "./components/ShortsPage";
 import Settings from "./components/Settings";
 import PlaylistPage from "./components/PlaylistPage";
+import AdminPage from "./components/AdminPage";
 import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
 import Box from "@mui/material/Box";
@@ -51,6 +52,21 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+  return children;
+};
+
+const AdminRoute = ({ children }: { children: JSX.Element }) => {
+  const auth = useAuth();
+  const location = useLocation();
+
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!auth.isAdmin) {
+    return <Navigate to="/home" replace />;
+  }
+
   return children;
 };
 
@@ -176,6 +192,14 @@ const AppContent = () => {
             <ProtectedRoute>
               <PlaylistPage isSidebarExpanded={isSidebarExpanded} />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPage isSidebarExpanded={isSidebarExpanded} />
+            </AdminRoute>
           }
         />
       </Routes>

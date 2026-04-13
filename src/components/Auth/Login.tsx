@@ -35,6 +35,8 @@ const inputSx = {
 
 const Login: React.FC = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [createAsAdmin, setCreateAsAdmin] = useState(false);
+  const [adminCode, setAdminCode] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -68,7 +70,12 @@ const Login: React.FC = () => {
       return;
     }
 
-    const signupResult = await auth.signup(username, password);
+    const signupResult = await auth.signup(
+      username,
+      password,
+      createAsAdmin ? "admin" : "user",
+      adminCode,
+    );
     setLoading(false);
     if (!signupResult.success) {
       setError(signupResult.message || "Unable to create account.");
@@ -244,23 +251,46 @@ const Login: React.FC = () => {
             />
 
             {mode === "signup" && (
-              <TextField
-                label="Confirm Password"
-                type={showPassword ? "text" : "password"}
-                variant="outlined"
-                fullWidth
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                sx={inputSx}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlinedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <>
+                <TextField
+                  label="Confirm Password"
+                  type={showPassword ? "text" : "password"}
+                  variant="outlined"
+                  fullWidth
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  sx={inputSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                <Button
+                  type="button"
+                  variant={createAsAdmin ? "contained" : "outlined"}
+                  onClick={() => setCreateAsAdmin((prev) => !prev)}
+                  sx={{ textTransform: "none", borderRadius: "10px" }}
+                >
+                  {createAsAdmin ? "Creating Admin Account" : "Create as Admin"}
+                </Button>
+
+                {createAsAdmin && (
+                  <TextField
+                    label="Admin Signup Code"
+                    type="password"
+                    variant="outlined"
+                    fullWidth
+                    value={adminCode}
+                    onChange={(e) => setAdminCode(e.target.value)}
+                    sx={inputSx}
+                  />
+                )}
+              </>
             )}
 
             <Button
@@ -317,6 +347,8 @@ const Login: React.FC = () => {
                 setError("");
                 setPassword("");
                 setConfirmPassword("");
+                setAdminCode("");
+                setCreateAsAdmin(false);
               }}
               sx={{
                 color: "#bbb",
