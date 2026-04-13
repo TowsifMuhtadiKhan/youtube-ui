@@ -16,11 +16,11 @@ import { CircularProgress, useMediaQuery, useTheme } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
 import ShortsPage from "./components/ShortsPage";
 import Settings from "./components/Settings";
+import PlaylistPage from "./components/PlaylistPage";
 import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
 import Box from "@mui/material/Box";
 import { AppThemeProvider } from "./components/ThemeContext";
-
 
 const LoadingScreen = () => (
   <Box
@@ -61,8 +61,6 @@ const AppContent = () => {
   const [isSidebarExpanded, setSidebarExpanded] = useState(!isMobile);
   const location = useLocation();
 
-
-
   const handleToggleSidebar = () => {
     setSidebarExpanded((prev) => !prev);
   };
@@ -94,8 +92,18 @@ const AppContent = () => {
         transition: "background-color 0.3s ease",
       }}
     >
-      {!isLoginPage && <Header onToggleSidebar={handleToggleSidebar} isSidebarExpanded={isSidebarExpanded} />}
-      {!isLoginPage && <Sidebar isSidebarExpanded={isSidebarExpanded} onClose={handleCloseSidebar} />}
+      {!isLoginPage && (
+        <Header
+          onToggleSidebar={handleToggleSidebar}
+          isSidebarExpanded={isSidebarExpanded}
+        />
+      )}
+      {!isLoginPage && (
+        <Sidebar
+          isSidebarExpanded={isSidebarExpanded}
+          onClose={handleCloseSidebar}
+        />
+      )}
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -159,6 +167,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <Settings isSidebarExpanded={isSidebarExpanded} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/playlist"
+          element={
+            <ProtectedRoute>
+              <PlaylistPage isSidebarExpanded={isSidebarExpanded} />
             </ProtectedRoute>
           }
         />

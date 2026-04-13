@@ -1,31 +1,111 @@
-# YouTube Clone UI ![YouTube Icon](https://upload.wikimedia.org/wikipedia/commons/6/62/YouTube_icon_%282013-2017%29.png)
+# YouTube UI with Playlist Backend
 
-This project is a **YouTube Clone UI**, built using **React** and **Material-UI**. It mimics the layout of YouTube's homepage, including the navigation sidebar, video player, and a responsive layout. It features **YouTube Shorts**, with embedded videos, and the sidebar auto-collapses on mobile.
+This repository now has two parts:
 
-## Live Demo 🚀
+- `frontend` (existing Vite React app in project root), deploy to Netlify.
+- `backend` (new Next.js API app in `backend/`), deploy to Vercel.
 
-You can view the live demo of this project here:  
-[**Live Demo: YouTube Clone**](https://youtubeclone-ee45.netlify.app/)
+The backend supports user playlists where users paste YouTube URLs.
+It avoids YouTube Data API quota by using YouTube oEmbed for metadata lookup (no Google API key required).
 
-## Features ✨
+## What Was Added
 
-- **Responsive UI**: The layout adapts to different screen sizes (mobile, tablet, desktop).
-- **Sidebar Navigation**: A sidebar for navigating between different sections like Home, Shorts, Subscriptions, etc.
-- **Embedded YouTube Shorts**: Displays embedded YouTube Shorts in a scrollable layout with infinite scroll.
-- **Dynamic Routing**: Navigate through various sections using React Router.
+- New backend app: `backend/`
+- API endpoints:
+  - `GET /api/health`
+  - `GET /api/playlists?userId=...`
+  - `POST /api/playlists`
+  - `POST /api/playlists/:playlistId/items`
+- Frontend playlist page: route `/playlist`
+- Frontend API client: `src/api/playlistBackend.ts`
 
-## Technologies Used 🛠️
+## Local Development
 
-- **React**: JavaScript library for building user interfaces.
-- **Material-UI**: A React component library for faster and easier web development.
-- **React Router**: For handling navigation between different views (Home, Shorts, etc.).
-- **CSS (via Material-UI's `sx` prop)**: For custom styling and layout adjustments.
-
-## How to Set Up and Run the Project 🏁
-
-### 1. Clone the repository
-
-Clone this repository to your local machine:
+### 1. Frontend (root)
 
 ```bash
-git clone https://github.com/your-username/youtube-clone.git
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Default frontend dev URL: `http://localhost:5173`
+
+### 2. Backend (`backend/`)
+
+```bash
+cd backend
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Default backend dev URL: `http://localhost:3000`
+
+Set `ALLOWED_ORIGINS` in `backend/.env.local`, for example:
+
+```env
+ALLOWED_ORIGINS=http://localhost:5173
+```
+
+Set frontend backend URL in root `.env`:
+
+```env
+VITE_BACKEND_API_URL=http://localhost:3000
+```
+
+## Deploy Backend to Vercel
+
+1. Push this repo to GitHub.
+2. In Vercel, create a new project and set **Root Directory** to `backend`.
+3. Build settings (usually auto-detected):
+   - Build command: `npm run build`
+   - Output: Next.js default
+4. Environment variables in Vercel project:
+   - `ALLOWED_ORIGINS=https://YOUR-NETLIFY-SITE.netlify.app`
+5. Optional persistence (recommended): attach Vercel KV to this backend project.
+   - When KV is attached, `KV_REST_API_URL` and `KV_REST_API_TOKEN` are injected automatically.
+   - Without KV, backend uses in-memory storage (resets on cold starts/redeploy).
+
+After deploy, your backend URL will look like:
+
+`https://your-backend-name.vercel.app`
+
+## Deploy Frontend to Netlify
+
+1. In Netlify, create a new site from this repo.
+2. Use project root as the base directory.
+3. Build settings:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+4. Add environment variable in Netlify:
+
+```env
+VITE_BACKEND_API_URL=https://your-backend-name.vercel.app
+```
+
+5. Deploy.
+
+## API Request Examples
+
+Create playlist:
+
+```bash
+curl -X POST https://your-backend-name.vercel.app/api/playlists \
+  -H "content-type: application/json" \
+  -d '{"userId":"user-123","name":"My Chill Playlist"}'
+```
+
+Add YouTube URL:
+
+```bash
+curl -X POST https://your-backend-name.vercel.app/api/playlists/PLAYLIST_ID/items \
+  -H "content-type: application/json" \
+  -d '{"userId":"user-123","youtubeUrl":"https://www.youtube.com/watch?v=JAnYzWpBhAw"}'
+```
+
+## Notes
+
+- This playlist flow does not require YouTube Data API key/quota.
+- oEmbed can still fail for unavailable/private/restricted videos.
+- If you need fully durable multi-user auth + database, next step is adding Supabase/Postgres auth and tables.

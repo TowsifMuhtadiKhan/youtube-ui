@@ -34,8 +34,10 @@ const inputSx = {
 };
 
 const Login: React.FC = () => {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,14 +48,40 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
-    const success = await auth.login(username, password);
+
+    if (mode === "login") {
+      const success = await auth.login(username, password);
+      setLoading(false);
+      if (success) {
+        const from = location.state?.from?.pathname || "/";
+        navigate(from, { replace: true });
+      } else {
+        setError("Invalid username or password. Please try again.");
+      }
+      return;
+    }
+
+    const signupResult = await auth.signup(username, password);
     setLoading(false);
+    if (!signupResult.success) {
+      setError(signupResult.message || "Unable to create account.");
+      return;
+    }
+
+    const success = await auth.login(username, password);
     if (success) {
       const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     } else {
-      setError("Invalid username or password. Please try again.");
+      setError("Account created, but login failed. Please sign in.");
+      setMode("login");
     }
   };
 
@@ -74,7 +102,8 @@ const Login: React.FC = () => {
           width: 400,
           height: 400,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,0,0,0.12) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(255,0,0,0.12) 0%, transparent 70%)",
           top: "-10%",
           left: "-10%",
           filter: "blur(60px)",
@@ -87,7 +116,8 @@ const Login: React.FC = () => {
           width: 300,
           height: 300,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,0,0,0.08) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(255,0,0,0.08) 0%, transparent 70%)",
           bottom: "5%",
           right: "-5%",
           filter: "blur(60px)",
@@ -106,7 +136,8 @@ const Login: React.FC = () => {
           WebkitBackdropFilter: "blur(24px)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "20px",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          boxShadow:
+            "0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
           position: "relative",
           zIndex: 1,
         }}
@@ -134,8 +165,12 @@ const Login: React.FC = () => {
               TomTube
             </Typography>
           </Box>
-          <Typography sx={{ color: "#aaa", fontSize: "14px", textAlign: "center" }}>
-            Sign in to continue watching
+          <Typography
+            sx={{ color: "#aaa", fontSize: "14px", textAlign: "center" }}
+          >
+            {mode === "login"
+              ? "Sign in to continue watching"
+              : "Create your account to continue"}
           </Typography>
         </Box>
 
@@ -208,11 +243,36 @@ const Login: React.FC = () => {
               }}
             />
 
+            {mode === "signup" && (
+              <TextField
+                label="Confirm Password"
+                type={showPassword ? "text" : "password"}
+                variant="outlined"
+                fullWidth
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                sx={inputSx}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlinedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+
             <Button
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading || !username || !password}
+              disabled={
+                loading ||
+                !username ||
+                !password ||
+                (mode === "signup" && !confirmPassword)
+              }
               sx={{
                 mt: 1,
                 py: 1.5,
@@ -227,7 +287,8 @@ const Login: React.FC = () => {
                 letterSpacing: "0.3px",
                 boxShadow: "0 4px 20px rgba(255,0,0,0.3)",
                 "&:hover": {
-                  background: "linear-gradient(135deg, #e60000 0%, #b30000 100%)",
+                  background:
+                    "linear-gradient(135deg, #e60000 0%, #b30000 100%)",
                   boxShadow: "0 6px 28px rgba(255,0,0,0.45)",
                   transform: "translateY(-1px)",
                 },
@@ -241,9 +302,35 @@ const Login: React.FC = () => {
             >
               {loading ? (
                 <CircularProgress size={20} sx={{ color: "#fff" }} />
-              ) : (
+              ) : mode === "login" ? (
                 "Sign In"
+              ) : (
+                "Create Account"
               )}
+            </Button>
+
+            <Button
+              type="button"
+              fullWidth
+              onClick={() => {
+                setMode((prev) => (prev === "login" ? "signup" : "login"));
+                setError("");
+                setPassword("");
+                setConfirmPassword("");
+              }}
+              sx={{
+                color: "#bbb",
+                textTransform: "none",
+                fontSize: "13px",
+                "&:hover": {
+                  color: "#fff",
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                },
+              }}
+            >
+              {mode === "login"
+                ? "Need an account? Create one"
+                : "Already have an account? Sign in"}
             </Button>
           </Box>
         </form>
