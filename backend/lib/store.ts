@@ -1,5 +1,11 @@
 import { kv } from "@vercel/kv";
 import type { Playlist, PlaylistItem } from "@/types/playlist";
+import {
+  hasMongo,
+  mongoGetState,
+  mongoListStateByPrefix,
+  mongoSetState,
+} from "@/lib/mongo";
 
 const inMemory = new Map<string, Playlist[]>();
 
@@ -14,6 +20,10 @@ const randomId = () =>
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const getList = async (userId: string): Promise<Playlist[]> => {
+  if (hasMongo()) {
+    return (await mongoGetState<Playlist[]>(keyFor(userId))) || [];
+  }
+
   if (hasKv()) {
     return (await kv.get<Playlist[]>(keyFor(userId))) || [];
   }
@@ -24,6 +34,11 @@ const setList = async (
   userId: string,
   playlists: Playlist[],
 ): Promise<void> => {
+  if (hasMongo()) {
+    await mongoSetState(keyFor(userId), playlists);
+    return;
+  }
+
   if (hasKv()) {
     await kv.set(keyFor(userId), playlists);
     return;
@@ -92,6 +107,11 @@ export const addItemToPlaylist = async (
 };
 
 export const listAllPlaylists = async (): Promise<Playlist[]> => {
+  if (hasMongo()) {
+    const docs = await mongoListStateByPrefix<Playlist[]>("playlists:user:");
+    return docs.flatMap((entry) => entry.value || []);
+  }
+
   if (hasKv()) {
     const keys = await kv.keys("playlists:user:*");
     if (!keys.length) {

@@ -10,16 +10,16 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home as HomeIcon,
-  Subscriptions as SubscriptionsIcon,
   VideoLibrary as VideoLibraryIcon,
   Settings as SettingsIcon,
   Android as AndroidIcon,
-  Whatshot as WhatshotIcon,
   History as HistoryIcon,
   PlaylistPlay as PlaylistPlayIcon,
   WatchLater as WatchLaterIcon,
   ThumbUpAlt as ThumbUpAltIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
+  ChildCare as ChildCareIcon,
+  FamilyRestroom as FamilyRestroomIcon,
 } from "@mui/icons-material";
 import { useThemeMode } from "./ThemeContext";
 import { useAuth } from "./Auth/AuthContext";
@@ -40,8 +40,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
 
   const sections = [
     { icon: <HomeIcon />, label: "Home", path: "/home" },
-    { icon: <WhatshotIcon />, label: "Shorts", path: "/shorts" },
-    { icon: <SubscriptionsIcon />, label: "Subscriptions", path: "/subscriptions" },
     { icon: <VideoLibraryIcon />, label: "Movies", path: "/movies" },
   ];
 
@@ -50,6 +48,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
     { icon: <PlaylistPlayIcon />, label: "Playlist", path: "/playlist" },
     { icon: <WatchLaterIcon />, label: "Watch Later", path: "/watch-later" },
     { icon: <ThumbUpAltIcon />, label: "Liked Videos", path: "/liked-videos" },
+  ];
+
+  const parentalSections = [
+    { icon: <ChildCareIcon sx={{ color: "#ff9800" }} />, label: "Kids Zone", path: "/kids" },
+    { icon: <FamilyRestroomIcon sx={{ color: "#2196f3" }} />, label: "Parent Mode", path: "/parent" },
   ];
 
   const lastSections = [
@@ -187,6 +190,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
       }}
     >
       {renderSection(sections)}
+      <Divider sx={{ my: 1.5, mx: 3, opacity: 0.05 }} />
+      {renderSection(parentalSections, "Family")}
       <Divider sx={{ my: 1.5, mx: 3, opacity: 0.05 }} />
       {renderSection(moreSections, "Your Space")}
       <Divider sx={{ my: 1.5, mx: 3, opacity: 0.05 }} />

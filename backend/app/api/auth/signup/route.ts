@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withCors } from "@/lib/cors";
-import { createUser, promoteUserToAdmin } from "@/lib/authStore";
+import {
+  createUser,
+  promoteUserToAdmin,
+  promoteUserToAdminByUsername,
+} from "@/lib/authStore";
 
 const signupSchema = z.object({
   username: z.string().min(3).max(32),
@@ -50,14 +54,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       error instanceof Error &&
       error.message === "Username already exists"
     ) {
-      const promoted = await promoteUserToAdmin(
+      const promotedByPassword = await promoteUserToAdmin(
         parsed.data.username,
         parsed.data.password,
       );
 
-      if (promoted) {
+      if (promotedByPassword) {
         return withCors(
-          NextResponse.json({ user: promoted, upgraded: true }, { status: 200 }),
+          NextResponse.json({ user: promotedByPassword, upgraded: true }, { status: 200 }),
+          origin,
+        );
+      }
+
+      const promotedByUsername = await promoteUserToAdminByUsername(
+        parsed.data.username,
+      );
+
+      if (promotedByUsername) {
+        return withCors(
+          NextResponse.json({ user: promotedByUsername, upgraded: true }, { status: 200 }),
           origin,
         );
       }

@@ -1,0 +1,12 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+const raw = execFileSync(process.execPath, ['node_modules/supabase/dist/supabase.js', 'status', '-o', 'json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+const status = JSON.parse(raw);
+const url = status.API_URL;
+const key = status.PUBLISHABLE_KEY || status.ANON_KEY;
+if (!url || !key) throw new Error('Local Supabase did not return its API URL and public key. Start it with npm run backend:start.');
+if (!['localhost', '127.0.0.1'].includes(new URL(url).hostname)) throw new Error('This script only configures a local Supabase instance.');
+let existing = existsSync('.env.local') ? readFileSync('.env.local', 'utf8') : '';
+existing = existing.split(/\r?\n/).filter(line => !/^VITE_SUPABASE_(URL|PUBLISHABLE_KEY)=/.test(line)).join('\n').trim();
+writeFileSync('.env.local', (existing ? existing + '\n' : '') + 'VITE_SUPABASE_URL=' + url + '\nVITE_SUPABASE_PUBLISHABLE_KEY=' + key + '\n');
+console.log('Connected this frontend to its local Supabase instance at ' + url + '. Restart Vite to load the configuration.');

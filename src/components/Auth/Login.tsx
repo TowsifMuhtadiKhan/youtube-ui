@@ -35,13 +35,12 @@ const inputSx = {
 
 const Login: React.FC = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [createAsAdmin, setCreateAsAdmin] = useState(false);
-  const [adminCode, setAdminCode] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const navigate = useNavigate();
@@ -50,6 +49,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotice("");
 
     if (mode === "signup" && password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -73,8 +73,6 @@ const Login: React.FC = () => {
     const signupResult = await auth.signup(
       username,
       password,
-      createAsAdmin ? "admin" : "user",
-      adminCode,
     );
     setLoading(false);
     if (!signupResult.success) {
@@ -82,14 +80,13 @@ const Login: React.FC = () => {
       return;
     }
 
-    const success = await auth.login(username, password);
-    if (success) {
-      const from = location.state?.from?.pathname || "/";
-      navigate(from, { replace: true });
-    } else {
-      setError("Account created, but login failed. Please sign in.");
+    if (signupResult.needsConfirmation) {
+      setNotice(signupResult.message || "Confirm your email, then sign in.");
       setMode("login");
+      return;
     }
+    const from = location.state?.from?.pathname || "/";
+    navigate(from, { replace: true });
   };
 
   return (
@@ -182,7 +179,8 @@ const Login: React.FC = () => {
         </Box>
 
         {/* Error */}
-        <Collapse in={!!error}>
+        {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
+        <Collapse in={!!error || !!auth.error}>
           <Alert
             severity="error"
             sx={{
@@ -194,14 +192,16 @@ const Login: React.FC = () => {
               "& .MuiAlert-icon": { color: "#ff6b6b" },
             }}
           >
-            {error}
+            {auth.error || error}
           </Alert>
         </Collapse>
 
         <form onSubmit={handleSubmit}>
           <Box display="flex" flexDirection="column" gap={2.5}>
             <TextField
-              label="Username"
+              label="Email"
+              type="email"
+              required
               variant="outlined"
               fullWidth
               value={username}
@@ -270,26 +270,6 @@ const Login: React.FC = () => {
                   }}
                 />
 
-                <Button
-                  type="button"
-                  variant={createAsAdmin ? "contained" : "outlined"}
-                  onClick={() => setCreateAsAdmin((prev) => !prev)}
-                  sx={{ textTransform: "none", borderRadius: "10px" }}
-                >
-                  {createAsAdmin ? "Creating Admin Account" : "Create as Admin"}
-                </Button>
-
-                {createAsAdmin && (
-                  <TextField
-                    label="Admin Signup Code"
-                    type="password"
-                    variant="outlined"
-                    fullWidth
-                    value={adminCode}
-                    onChange={(e) => setAdminCode(e.target.value)}
-                    sx={inputSx}
-                  />
-                )}
               </>
             )}
 
@@ -347,8 +327,6 @@ const Login: React.FC = () => {
                 setError("");
                 setPassword("");
                 setConfirmPassword("");
-                setAdminCode("");
-                setCreateAsAdmin(false);
               }}
               sx={{
                 color: "#bbb",

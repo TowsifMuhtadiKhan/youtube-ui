@@ -1,4 +1,5 @@
 import { kv } from "@vercel/kv";
+import { hasMongo, mongoGetState, mongoSetState } from "@/lib/mongo";
 
 interface StoredUser {
   id: string;
@@ -20,6 +21,10 @@ const randomId = () =>
     : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const getUsers = async (): Promise<StoredUser[]> => {
+  if (hasMongo()) {
+    return (await mongoGetState<StoredUser[]>(USERS_KEY)) || [];
+  }
+
   if (hasKv()) {
     return (await kv.get<StoredUser[]>(USERS_KEY)) || [];
   }
@@ -27,6 +32,11 @@ const getUsers = async (): Promise<StoredUser[]> => {
 };
 
 const setUsers = async (users: StoredUser[]): Promise<void> => {
+  if (hasMongo()) {
+    await mongoSetState(USERS_KEY, users);
+    return;
+  }
+
   if (hasKv()) {
     await kv.set(USERS_KEY, users);
     return;
@@ -129,6 +139,31 @@ export const promoteUserToAdmin = async (
     (u) =>
       u.username.toLowerCase() === normalizedUsername &&
       u.password === password,
+  );
+
+  if (index === -1) {
+    return null;
+  }
+
+  const target = users[index];
+  if (target.role === "admin") {
+    return { id: target.id, username: target.username, role: "admin" };
+  }
+
+  const next = [...users];
+  next[index] = { ...target, role: "admin" };
+  await setUsers(next);
+
+  return { id: target.id, username: target.username, role: "admin" };
+};
+
+export const promoteUserToAdminByUsername = async (
+  username: string,
+): Promise<{ id: string; username: string; role: "admin" } | null> => {
+  const users = await getUsers();
+  const normalizedUsername = username.trim().toLowerCase();
+  const index = users.findIndex(
+    (u) => u.username.toLowerCase() === normalizedUsername,
   );
 
   if (index === -1) {

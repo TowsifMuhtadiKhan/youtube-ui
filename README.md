@@ -1,129 +1,49 @@
-# YouTube UI with Playlist Backend
+# TomTube
 
-This repository now has two parts:
+Vite + React frontend with Supabase Auth and PostgreSQL as the backend. The app no longer calls the legacy Next.js API in backend/.
 
-- `frontend` (existing Vite React app in project root), deploy to Netlify.
-- `backend` (new Next.js API app in `backend/`), deploy to Vercel.
+## Local setup for this repository
 
-The backend supports user playlists where users paste YouTube URLs.
-It avoids YouTube Data API quota by using YouTube oEmbed for metadata lookup (no Google API key required).
+With Docker running, use:
 
-## What Was Added
-
-- New backend app: `backend/`
-- API endpoints:
-  - `GET /api/health`
-  - `GET /api/playlists?userId=...`
-  - `POST /api/playlists`
-  - `POST /api/playlists/:playlistId/items`
-- Frontend playlist page: route `/playlist`
-- Frontend API client: `src/api/playlistBackend.ts`
-
-## Local Development
-
-### 1. Frontend (root)
-
-```bash
+```sh
 npm install
-cp .env.example .env
+npm run backend:start
+npm run backend:configure
 npm run dev
 ```
 
-Default frontend dev URL: `http://localhost:5173`
+This creates the separate local Supabase project youtube-ui and writes its public connection settings to the ignored .env.local file. It does not connect to any hosted project. Keep VITE_YOUTUBE_API_KEY in .env or .env.local for parent searches. Run npm run backend:test to test the local database and npm run backend:test:api to verify real signup, login, persistence, and account isolation. Use npm run backend:stop to stop only this repository's Supabase stack.
 
-### 2. Backend (`backend/`)
+## Hosted setup (optional)
 
-```bash
-cd backend
-npm install
-cp .env.example .env.local
-npm run dev
-```
+1. Create or choose a Supabase project.
+2. Apply supabase/migrations/20260916172542_tomtube_backend.sql in the Supabase SQL Editor, or link the project with the Supabase CLI and push the migration.
+3. Copy .env.example to .env.local and set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY from your project's Connect dialog. Use only a publishable key in the browser, never a secret/service-role key.
+4. Set VITE_YOUTUBE_API_KEY for parent-initiated YouTube searches. Restrict that Google key to the YouTube Data API and your site origins.
+5. Run npm install and npm run dev. No Next.js server is required.
+6. Sign up with an email and password. If email confirmation is enabled, confirm the email before signing in. Set your Supabase Auth Site URL and allowed redirect URLs to the frontend URL.
 
-Default backend dev URL: `http://localhost:3000`
+## Content flow
 
-Set `ALLOWED_ORIGINS` in `backend/.env.local`, for example:
+Parents search YouTube and select Add to approved videos. Selections are stored in Supabase under the signed-in user's ID. Home and Kids Zone read only that account's approved videos. Screen-time limits, daily usage, bonus minutes, PIN settings, and playlists also live in Supabase.
 
-```env
-ALLOWED_ORIGINS=http://localhost:5173
-ADMIN_SIGNUP_CODE=your-local-admin-code
-```
+The initial parent PIN is 1234; change it in Parent Mode. PINs are hashed and never returned to the browser. The current family model has one child profile per parent account. Kid Mode uses the parent's signed-in session and a PIN-gated interface; it is not a separate untrusted child account.
 
-Set frontend backend URL in root `.env`:
+## Database access
 
-```env
-VITE_BACKEND_API_URL=http://localhost:3000
-```
+The public tomtube_api RPC delegates to a private function with an explicit auth.uid() ownership check. Tables are in the non-exposed tomtube_private schema, have RLS enabled, and have no direct anon/authenticated table grants. Mutations lock the family row to serialize approvals and screen-time updates. Admin access checks the user's server-managed app_metadata.role in auth.users, not client input or editable user metadata.
 
-## Deploy Backend to Vercel
+To grant an administrator, use the Supabase Auth Admin API from a trusted server or set raw_app_meta_data.role to admin in the SQL Editor for the intended user. Users cannot choose administrator status during signup. Sign in again after changing a role.
 
-1. Push this repo to GitHub.
-2. In Vercel, create a new project and set **Root Directory** to `backend`.
-3. Build settings (usually auto-detected):
-   - Build command: `npm run build`
-   - Output: Next.js default
-4. Environment variables in Vercel project:
-   - `ALLOWED_ORIGINS=https://YOUR-NETLIFY-SITE.netlify.app`
-   - `ADMIN_SIGNUP_CODE=YOUR_SECRET_ADMIN_CODE`
-5. Optional persistence (recommended): attach Vercel KV to this backend project.
-   - When KV is attached, `KV_REST_API_URL` and `KV_REST_API_TOKEN` are injected automatically.
-   - Without KV, backend uses in-memory storage (resets on cold starts/redeploy).
+## Deployment
 
-After deploy, your backend URL will look like:
+Deploy the root frontend to Netlify or another static host using npm run build and publish dist. Configure the same three VITE_ variables at build time. Configure your host to serve index.html for application routes. Supabase hosts authentication and database functions; no Vercel/Next.js backend deployment is needed.
 
-`https://your-backend-name.vercel.app`
+## Existing data
 
-## Deploy Frontend to Netlify
+The old backend/ directory is retained as migration reference because it contains existing work. It is no longer used by the frontend. Old MongoDB/KV accounts, passwords, approvals, and playlists are not automatically imported into Supabase. Plan and verify a data migration before deleting the old backend or its storage. LocalStorage login flags are no longer accepted as authentication.
 
-1. In Netlify, create a new site from this repo.
-2. Use project root as the base directory.
-3. Build settings:
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-4. Add environment variable in Netlify:
+## Verification
 
-```env
-VITE_BACKEND_API_URL=https://your-backend-name.vercel.app
-```
-
-5. Deploy.
-
-## API Request Examples
-
-Create admin account:
-
-```bash
-curl -X POST https://your-backend-name.vercel.app/api/auth/signup \
-   -H "content-type: application/json" \
-   -d '{"username":"admin@example.com","password":"Admin123!","role":"admin","adminCode":"YOUR_SECRET_ADMIN_CODE"}'
-```
-
-Open admin view in frontend:
-
-`https://your-frontend.netlify.app/admin`
-
-Create playlist:
-
-```bash
-curl -X POST https://your-backend-name.vercel.app/api/playlists \
-  -H "content-type: application/json" \
-  -d '{"userId":"user-123","name":"My Chill Playlist"}'
-```
-
-Add YouTube URL:
-
-```bash
-curl -X POST https://your-backend-name.vercel.app/api/playlists/PLAYLIST_ID/items \
-  -H "content-type: application/json" \
-  -d '{"userId":"user-123","youtubeUrl":"https://www.youtube.com/watch?v=JAnYzWpBhAw"}'
-```
-
-## Notes
-
-- This playlist flow does not require YouTube Data API key/quota.
-- oEmbed can still fail for unavailable/private/restricted videos.
-- If you need fully durable multi-user auth + database, next step is adding Supabase/Postgres auth and tables.
-- Backend scripts:
-   - `npm run dev` for development.
-   - `npm run start` now builds and starts production server in one command.
-   - `npm run start:prod` starts from existing build only.
+Run npm run build for the frontend. supabase/tests/backend.sql exercises the backend in a transaction and rolls back its fixtures. Use it on a disposable local Supabase database after applying the migration. It covers account isolation, approvals, playlist ownership, screen time, PIN changes, and admin/anonymous authorization.

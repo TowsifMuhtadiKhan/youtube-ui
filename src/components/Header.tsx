@@ -27,10 +27,10 @@ import ClearIcon from "@mui/icons-material/Clear";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ChildCareIcon from "@mui/icons-material/ChildCare";
+import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import { useNavigate } from "react-router-dom";
-import { fetchSearchResults } from "../api/youtube";
-import type { YouTubeVideoInfo } from "../api/youtube";
-import seriesMoviesData from "./driveData.json";
+import { fetchApprovedVideos } from "../api/parentalApi";
 import { useAuth } from "./Auth/AuthContext";
 import { useThemeMode } from "./ThemeContext";
 
@@ -97,10 +97,12 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
   };
   const handleClose = () => setAnchorEl(null);
   const handleNotesClose = () => setNotificationsAnchorEl(null);
-  const handleLogout = () => {
-    auth.logout();
-    handleClose();
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await auth.logout();
+      handleClose();
+      navigate("/login");
+    } catch (error) { console.error("Unable to sign out:", error); }
   };
 
   const handleSearch = async (query: string) => {
@@ -109,44 +111,15 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
       return;
     }
 
-    const videoResults: SearchResult[] = [];
-    
-    // Check if query is a YouTube URL
-    const ytUrlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = query.match(ytUrlRegex);
-    if (match && match[1]) {
-       videoResults.push({
-         id: match[1],
-         title: "Play YouTube Video from URL",
-         subTitle: match[1],
-         thumbnail: `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`,
-         type: "video"
-       });
-    }
-
-    const lowerQuery = query.toLowerCase();
-    const ytResults = await fetchSearchResults(query, 6);
-    ytResults.forEach((video: YouTubeVideoInfo) => {
-       if (video.id !== match?.[1]) { // Avoid duplicate if already matched by URL
-         videoResults.push({
-           id: video.id,
-           title: video.title,
-           subTitle: video.subTitle,
-           thumbnail: video.thumbnail,
-           type: "video",
-         });
-       }
-    });
-
-    const seriesResults: SearchResult[] = (seriesMoviesData as any).series
-      .filter((s:any) => s.title.toLowerCase().includes(lowerQuery))
-      .map((s:any) => ({ id: s.id, title: s.title, thumbnail: s.thumbnail, type: "series" }));
-
-    setSuggestions([...videoResults, ...seriesResults]);
+    try {
+      const approved = await fetchApprovedVideos();
+      const term = query.trim().toLowerCase();
+      setSuggestions(approved.filter(video => video.title.toLowerCase().includes(term) || video.channelName.toLowerCase().includes(term) || query.includes(video.youtubeVideoId)).map(video => ({ id: video.youtubeVideoId, title: video.title, subTitle: video.channelName, thumbnail: video.thumbnail, type: "video" as const })));
+    } catch { setSuggestions([]); }
   };
 
   const handleSuggestionClick = (item: SearchResult) => {
-    navigate(`/video/${item.id}`);
+    navigate(`/kids/watch/${item.id}`);
     setSearchQuery("");
     setShowSuggestions(false);
   };
@@ -265,16 +238,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
                 onBlur={() => { setTimeout(() => setSearchFocused(false), 200); setShowSuggestions(false); }}
                 onKeyDown={(e) => {
                    if (e.key === "Enter" && searchQuery.trim()) {
-                      const ytUrlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-                      const match = searchQuery.match(ytUrlRegex);
-                      if (match && match[1]) {
-                        navigate(`/video/${match[1]}`);
-                        setSearchQuery("");
-                        setShowSuggestions(false);
-                      } else {
-                        // Standard search logic (could go to search results page)
-                        if (suggestions.length > 0) handleSuggestionClick(suggestions[0]);
-                      }
+                      if (suggestions.length > 0) handleSuggestionClick(suggestions[0]);
                    }
                 }}
                 onChange={(e) => {
@@ -373,6 +337,14 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
                  <Typography sx={{ fontWeight: 600, fontSize: "15px", color: isDark ? "#fff" : "#000" }}>{displayName}</Typography>
                  <Typography sx={{ fontSize: "12px", color: "gray" }}>{auth.isAdmin ? "Admin Account" : "User Account"}</Typography>
                </Box>
+               <Divider sx={{ opacity: 0.1 }} />
+
+               <MenuItem onClick={() => { handleClose(); navigate("/kids"); }} sx={{ py: 1.2 }}>
+                 <ChildCareIcon sx={{ fontSize: 20, mr: 1.5, color: "#ff9800" }} /> Kids Zone
+               </MenuItem>
+               <MenuItem onClick={() => { handleClose(); navigate("/parent"); }} sx={{ py: 1.2 }}>
+                 <FamilyRestroomIcon sx={{ fontSize: 20, mr: 1.5, color: "#2196f3" }} /> Parent Mode
+               </MenuItem>
                <Divider sx={{ opacity: 0.1 }} />
                
                <Box sx={{ p: 2 }}>

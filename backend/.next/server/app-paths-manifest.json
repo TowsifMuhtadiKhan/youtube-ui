@@ -1,1 +1,5 @@
-{}
+{
+  "/api/parental/whitelist/route": "app/api/parental/whitelist/route.js",
+  "/api/parental/screentime/route": "app/api/parental/screentime/route.js",
+  "/api/parental/pin/route": "app/api/parental/pin/route.js"
+}

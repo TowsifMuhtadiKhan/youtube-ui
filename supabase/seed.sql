@@ -1,0 +1,1 @@
+-- No sample videos: each parent starts with an empty approved list.

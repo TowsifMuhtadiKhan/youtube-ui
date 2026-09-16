@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backend:start": "supabase start --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
+    "backend:stop": "supabase stop",
+    "backend:configure": "node scripts/configure-local-supabase.mjs",
+    "backend:test": "node scripts/test-supabase.mjs",
+    "backend:test:api": "node scripts/test-supabase-http.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -17,6 +22,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
+    "@supabase/supabase-js": "2.116.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-player": "^3.3.1",
@@ -33,6 +39,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "supabase": "2.117.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4",

@@ -10,14 +10,15 @@ import {
   useLocation,
 } from "react-router-dom";
 import MediaBrowser from "./components/Shorts";
-import { Subscription } from "./components/Subscription";
 import VideoPage from "./components/VideoPage";
 import { CircularProgress, useMediaQuery, useTheme } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
-import ShortsPage from "./components/ShortsPage";
 import Settings from "./components/Settings";
 import PlaylistPage from "./components/PlaylistPage";
 import AdminPage from "./components/AdminPage";
+import ParentMode from "./components/Parental/ParentMode";
+import ChildMode from "./components/Parental/ChildMode";
+import ChildPlayer from "./components/Parental/ChildPlayer";
 import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
 import Box from "@mui/material/Box";
@@ -40,15 +41,7 @@ const LoadingScreen = () => (
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const auth = useAuth();
   const location = useLocation();
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  useEffect(() => {
-    if (auth.isAuthenticated !== undefined) {
-      setIsInitialized(true);
-    }
-  }, [auth.isAuthenticated]);
-
-  if (!isInitialized) return <LoadingScreen />;
+  if (auth.loading) return <LoadingScreen />;
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -58,6 +51,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 const AdminRoute = ({ children }: { children: JSX.Element }) => {
   const auth = useAuth();
   const location = useLocation();
+  if (auth.loading) return <LoadingScreen />;
 
   if (!auth.isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -99,6 +93,15 @@ const AppContent = () => {
   }, [location.pathname, isMobile]);
 
   const isLoginPage = location.pathname === "/login";
+  const isKidsPage = location.pathname.startsWith("/kids");
+  const isChildModeActive =
+    localStorage.getItem("ytui_active_mode") === "child" &&
+    !isKidsPage &&
+    !isLoginPage;
+
+  if (isChildModeActive) {
+    return <Navigate to="/kids" replace />;
+  }
 
   return (
     <Box
@@ -108,13 +111,13 @@ const AppContent = () => {
         transition: "background-color 0.3s ease",
       }}
     >
-      {!isLoginPage && (
+      {!isLoginPage && !isKidsPage && (
         <Header
           onToggleSidebar={handleToggleSidebar}
           isSidebarExpanded={isSidebarExpanded}
         />
       )}
-      {!isLoginPage && (
+      {!isLoginPage && !isKidsPage && (
         <Sidebar
           isSidebarExpanded={isSidebarExpanded}
           onClose={handleCloseSidebar}
@@ -122,6 +125,9 @@ const AppContent = () => {
       )}
       <Routes>
         <Route path="/login" element={<Login />} />
+<Route path="/parent" element={<ProtectedRoute><ParentMode isSidebarExpanded={isSidebarExpanded} /></ProtectedRoute>} />
+<Route path="/kids" element={<ProtectedRoute><ChildMode /></ProtectedRoute>} />
+<Route path="/kids/watch/:id" element={<ProtectedRoute><ChildPlayer /></ProtectedRoute>} />
         <Route
           path="/"
           element={
@@ -146,14 +152,7 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/subscriptions"
-          element={
-            <ProtectedRoute>
-              <Subscription isSidebarExpanded={isSidebarExpanded} />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/subscriptions" element={<Navigate to="/home" replace />} />
         <Route
           path="/video/:id"
           element={
@@ -170,14 +169,7 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/shorts"
-          element={
-            <ProtectedRoute>
-              <ShortsPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/shorts" element={<Navigate to="/home" replace />} />
         <Route
           path="/settings"
           element={

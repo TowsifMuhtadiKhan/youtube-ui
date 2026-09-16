@@ -1,157 +1,57 @@
-// components/Auth/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useState } from "react";
-
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { getSupabase } from "../../api/supabase";
 interface AuthContextType {
-  isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
-  signup: (
-    username: string,
-    password: string,
-    role?: "user" | "admin",
-    adminCode?: string,
-  ) => Promise<{ success: boolean; message?: string }>;
-  logout: () => void;
-  user: string | null;
-  role: "user" | "admin";
-  isAdmin: boolean;
+ isAuthenticated: boolean;
+ loading: boolean;
+ error: string;
+ login: (email: string, password: string) => Promise<boolean>;
+ signup: (email: string, password: string) => Promise<{ success: boolean; message?: string; needsConfirmation?: boolean }>;
+ logout: () => Promise<void>;
+ user: string | null;
+ userId: string | null;
+ role: "user" | "admin";
+ isAdmin: boolean;
 }
-
 const AuthContext = createContext<AuthContextType>(null!);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const API_BASE =
-    import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3000";
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Initialize from localStorage
-    return localStorage.getItem("isAuthenticated") === "true";
-  });
-  const [user, setUser] = useState<string | null>(() => {
-    // Initialize from localStorage
-    return localStorage.getItem("user") || null;
-  });
-  const [role, setRole] = useState<"user" | "admin">(() => {
-    const stored = localStorage.getItem("role");
-    return stored === "admin" ? "admin" : "user";
-  });
-
-  useEffect(() => {
-    const syncUserRole = async () => {
-      if (!isAuthenticated || !user) {
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${API_BASE}/api/auth/user?username=${encodeURIComponent(user)}`,
-        );
-        if (!response.ok) {
-          return;
-        }
-
-        const data = (await response.json()) as {
-          user?: { role?: "user" | "admin"; username?: string };
-        };
-
-        if (data.user?.role) {
-          const nextRole = data.user.role === "admin" ? "admin" : "user";
-          setRole(nextRole);
-          localStorage.setItem("role", nextRole);
-        }
-
-        if (data.user?.username) {
-          setUser(data.user.username);
-          localStorage.setItem("user", data.user.username);
-        }
-      } catch {
-        // Keep existing local values if sync fails.
-      }
-    };
-
-    void syncUserRole();
-  }, [API_BASE, isAuthenticated, user]);
-
-  const login = async (username: string, password: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-
-      const data = (await response.json()) as {
-        user?: { username: string; role?: "user" | "admin" };
-      };
-      if (data.user) {
-        const nextRole = data.user.role === "admin" ? "admin" : "user";
-        setIsAuthenticated(true);
-        setUser(data.user.username);
-        setRole(nextRole);
-        // Store in localStorage
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("user", data.user.username);
-        localStorage.setItem("role", nextRole);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Login failed:", error);
-      return false;
-    }
-  };
-
-  const signup = async (
-    username: string,
-    password: string,
-    signupRole: "user" | "admin" = "user",
-    adminCode?: string,
-  ) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role: signupRole, adminCode }),
-      });
-
-      const data = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        return { success: false, message: data.error || "Signup failed" };
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error("Signup failed:", error);
-      return { success: false, message: "Unable to create account" };
-    }
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    setRole("user");
-    // Clear localStorage
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
-  };
-
-  const value = {
-    isAuthenticated,
-    login,
-    signup,
-    logout,
-    user,
-    role,
-    isAdmin: role === "admin",
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+export function AuthProvider({ children }: { children: ReactNode }) {
+ const [account, setAccount] = useState<User | null>(null);
+ const [loading, setLoading] = useState(true);
+ const [error, setError] = useState("");
+ useEffect(() => {
+  let active = true;
+  try {
+   const { data: { subscription } } = getSupabase().auth.onAuthStateChange((_event, session) => {
+    if (!active) return;
+    setAccount(session?.user ?? null); setLoading(false);
+   });
+   return () => { active = false; subscription.unsubscribe(); };
+  } catch (err) { setError(err instanceof Error ? err.message : "Unable to connect to Supabase."); setLoading(false); }
+ }, []);
+ const login = async (email: string, password: string) => {
+  setError("");
+  try {
+   const { data, error: authError } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password });
+   if (authError) throw authError;
+   setAccount(data.user); return true;
+  } catch (err) { setError(err instanceof Error ? err.message : "Unable to sign in."); return false; }
+ };
+ const signup = async (email: string, password: string) => {
+  setError("");
+  try {
+   const { data, error: authError } = await getSupabase().auth.signUp({ email: email.trim(), password });
+   if (authError) throw authError;
+   setAccount(data.session?.user ?? null);
+   return { success: true, needsConfirmation: !data.session, message: !data.session ? "Check your email to confirm your account, then sign in." : undefined };
+  } catch (err) { return { success: false, message: err instanceof Error ? err.message : "Unable to create account." }; }
+ };
+ const logout = async () => {
+  const { error: authError } = await getSupabase().auth.signOut();
+  if (authError) { setError(authError.message); throw authError; }
+  setAccount(null);
+  for (const key of ["isAuthenticated", "user", "role", "ytui_active_mode"]) localStorage.removeItem(key);
+ };
+ const role = account?.app_metadata?.role === "admin" ? "admin" : "user";
+ return <AuthContext.Provider value={{ isAuthenticated: !!account, loading, error, login, signup, logout, user: account?.email ?? null, userId: account?.id ?? null, role, isAdmin: role === "admin" }}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export function useAuth() { return useContext(AuthContext); }

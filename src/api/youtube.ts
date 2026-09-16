@@ -12,7 +12,7 @@ export interface YouTubeVideoInfo {
 }
 
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
-const FORCE_LOCAL_ONLY = true; // Set to true since quota is hit
+const FORCE_LOCAL_ONLY = false; // Attempts live YouTube Data API v3, falls back gracefully on quota error
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 // Mock data fallback for quota management
@@ -123,8 +123,10 @@ export const fetchVideoDetails = async (videoId: string): Promise<YouTubeVideoIn
     }
 }
 
-export const fetchSearchResults = async (query: string, maxResults = 10): Promise<YouTubeVideoInfo[]> => {
-  if (!API_KEY || FORCE_LOCAL_ONLY || !query.trim()) {
+export const fetchSearchResults = async (query: string, maxResults = 10, liveOnly = false): Promise<YouTubeVideoInfo[]> => {
+  if (!query.trim()) return [];
+  if (!API_KEY || FORCE_LOCAL_ONLY) {
+    if (liveOnly) throw new Error("YouTube search is unavailable. Configure the YouTube API key and try again.");
     return getMockVideos(query, maxResults);
   }
 
@@ -134,7 +136,8 @@ export const fetchSearchResults = async (query: string, maxResults = 10): Promis
     );
     const data = await response.json();
 
-    if (data.error) {
+    if (!response.ok || data.error) {
+      if (liveOnly) throw new Error(data.error?.message || "YouTube search failed. Please try again.");
       console.error("YouTube Search API Error:", data.error.message);
       return getMockVideos(query, maxResults);
     }
@@ -149,6 +152,7 @@ export const fetchSearchResults = async (query: string, maxResults = 10): Promis
       publishedAt: item.snippet.publishedAt,
     }));
   } catch (error) {
+    if (liveOnly) throw error;
     console.error("Error searching videos:", error);
     return getMockVideos(query, maxResults);
   }

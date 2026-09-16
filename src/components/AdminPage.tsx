@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from "react";
 import {
   Box,
+  Button,
   Card,
   CardContent,
   CircularProgress,
   Grid,
+  TextField,
   Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "./Auth/AuthContext";
-import { fetchAdminUsers, type AdminUser } from "../api/admin";
+import {
+  createPlaylistForUser,
+  fetchAdminOverview,
+  type AdminOverview,
+} from "../api/admin";
 
 interface AdminPageProps {
   isSidebarExpanded: boolean;
@@ -21,33 +27,58 @@ const AdminPage: React.FC<AdminPageProps> = ({ isSidebarExpanded }) => {
   const auth = useAuth();
   const sidebarWidth = isSidebarExpanded ? 242 : 104;
 
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [playlistDrafts, setPlaylistDrafts] = useState<Record<string, string>>({});
+  const [creatingFor, setCreatingFor] = useState<string | null>(null);
+
+  const loadOverview = async () => {
+    if (!auth.user) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const result = await fetchAdminOverview(auth.user);
+      setOverview(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load admin data";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const run = async () => {
-      if (!auth.user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const result = await fetchAdminUsers(auth.user);
-        setUsers(result);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load admin data";
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void run();
+    void loadOverview();
   }, [auth.user]);
 
-  const admins = users.filter((u) => u.role === "admin").length;
-  const normalUsers = users.filter((u) => u.role === "user").length;
+  const handleCreatePlaylist = async (userId: string) => {
+    if (!auth.user) {
+      return;
+    }
+
+    const playlistName = (playlistDrafts[userId] || "").trim();
+    if (!playlistName) {
+      return;
+    }
+
+    setCreatingFor(userId);
+    setError("");
+    try {
+      await createPlaylistForUser(auth.user, userId, playlistName);
+      setPlaylistDrafts((prev) => ({ ...prev, [userId]: "" }));
+      await loadOverview();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create playlist";
+      setError(message);
+    } finally {
+      setCreatingFor(null);
+    }
+  };
 
   return (
     <Box
@@ -63,7 +94,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ isSidebarExpanded }) => {
         Admin Portal
       </Typography>
       <Typography sx={{ opacity: 0.75, mb: 3 }}>
-        View all registered users and admin accounts.
+        Full analytics, users, playlists and video activity.
       </Typography>
 
       {loading ? (
@@ -75,45 +106,147 @@ const AdminPage: React.FC<AdminPageProps> = ({ isSidebarExpanded }) => {
       ) : (
         <>
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography sx={{ opacity: 0.7 }}>Total Users</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>{users.length}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                    {overview?.totals.users || 0}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography sx={{ opacity: 0.7 }}>Admins</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>{admins}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                    {overview?.totals.admins || 0}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <Card>
                 <CardContent>
-                  <Typography sx={{ opacity: 0.7 }}>Regular Users</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>{normalUsers}</Typography>
+                  <Typography sx={{ opacity: 0.7 }}>Total Playlists</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                    {overview?.totals.playlists || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <Card>
+                <CardContent>
+                  <Typography sx={{ opacity: 0.7 }}>Total Videos Added</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                    {overview?.totals.videos || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card>
+                <CardContent>
+                  <Typography sx={{ fontWeight: 700, mb: 1 }}>All Playlists</Typography>
+                  <Typography sx={{ opacity: 0.7, mb: 1, fontSize: 13 }}>
+                    {overview?.playlists.length || 0} total playlists in the system.
+                  </Typography>
+                  <Box sx={{ display: "grid", gap: 1, maxHeight: 240, overflow: "auto" }}>
+                    {(overview?.playlists || []).slice(0, 12).map((playlist) => (
+                      <Box
+                        key={playlist.id}
+                        sx={{
+                          p: 1,
+                          borderRadius: 1.5,
+                          backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#f6f6f6",
+                        }}
+                      >
+                        <Typography sx={{ fontWeight: 700, fontSize: 13 }}>{playlist.name}</Typography>
+                        <Typography sx={{ fontSize: 12, opacity: 0.7 }}>
+                          User: {playlist.userId} • Videos: {playlist.items.length}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card>
+                <CardContent>
+                  <Typography sx={{ fontWeight: 700, mb: 1 }}>Orphan Data</Typography>
+                  <Typography sx={{ opacity: 0.7, mb: 1, fontSize: 13 }}>
+                    Playlists whose owner account is not in current user records.
+                  </Typography>
+                  <Box sx={{ display: "grid", gap: 1, maxHeight: 240, overflow: "auto" }}>
+                    {(overview?.orphanOwners || []).length === 0 ? (
+                      <Typography sx={{ fontSize: 13, opacity: 0.7 }}>No orphan owner data.</Typography>
+                    ) : (
+                      (overview?.orphanOwners || []).map((orphan) => (
+                        <Box
+                          key={orphan.ownerId}
+                          sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#f6f6f6",
+                          }}
+                        >
+                          <Typography sx={{ fontWeight: 700, fontSize: 13 }}>{orphan.ownerId}</Typography>
+                          <Typography sx={{ fontSize: 12, opacity: 0.7 }}>
+                            Playlists: {orphan.playlists} • Videos: {orphan.videos}
+                          </Typography>
+                        </Box>
+                      ))
+                    )}
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
 
           <Box sx={{ display: "grid", gap: 1 }}>
-            {users.map((u) => (
+            {(overview?.users || []).map((u) => (
               <Card key={u.id}>
-                <CardContent sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
-                  <Box>
-                    <Typography sx={{ fontWeight: 700 }}>{u.username}</Typography>
-                    <Typography sx={{ opacity: 0.7, fontSize: 13 }}>
-                      Created: {new Date(u.createdAt).toLocaleString()}
+                <CardContent sx={{ display: "grid", gap: 1.2 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 700 }}>{u.username}</Typography>
+                      <Typography sx={{ opacity: 0.7, fontSize: 13 }}>
+                        Created: {new Date(u.createdAt).toLocaleString()} • UserId: {u.id}
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontWeight: 700, color: u.role === "admin" ? "error.main" : "text.primary" }}>
+                      {u.role.toUpperCase()}
                     </Typography>
                   </Box>
-                  <Typography sx={{ fontWeight: 700, color: u.role === "admin" ? "error.main" : "text.primary" }}>
-                    {u.role.toUpperCase()}
+
+                  <Typography sx={{ fontSize: 13, opacity: 0.8 }}>
+                    Playlists: {u.playlists || 0} • Videos added: {u.videos || 0}
                   </Typography>
+
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <TextField
+                      size="small"
+                      label="Create playlist for this user"
+                      value={playlistDrafts[u.id] || ""}
+                      onChange={(e) =>
+                        setPlaylistDrafts((prev) => ({ ...prev, [u.id]: e.target.value }))
+                      }
+                      sx={{ minWidth: 240 }}
+                    />
+                    <Button
+                      variant="contained"
+                      disabled={creatingFor === u.id || !(playlistDrafts[u.id] || "").trim()}
+                      onClick={() => void handleCreatePlaylist(u.id)}
+                    >
+                      {creatingFor === u.id ? "Adding..." : "Add Playlist"}
+                    </Button>
+                  </Box>
                 </CardContent>
               </Card>
             ))}

@@ -16,7 +16,10 @@ export const withCors = (
   const allowAll = allowed.length === 0 || allowed.includes("*");
   const canAllow = allowAll || (!!origin && allowed.includes(origin));
 
-  response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS",
+  );
   response.headers.set(
     "Access-Control-Allow-Headers",
     "Content-Type,Authorization,x-admin-user",
