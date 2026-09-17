@@ -133,14 +133,25 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
       sx={{
         position: "fixed",
         top: 0,
-        left: 0,
-        right: 0,
+        left: "var(--safe-left)",
+        right: "var(--safe-right)",
         zIndex: 1400,
         px: { xs: 1, sm: 1.5, md: 1.5 },
         pl: isMobile ? 1 : `${sidebarWidthValue + 16}px`, // Reduced padding to increase width
         pr: isMobile ? 1 : "20px",
-        py: 1.2,
-        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        pt: "calc(var(--safe-top) + 9.6px)",
+        pb: 1.2,
+        "&::before": {
+          content: '\"\"',
+          position: "absolute",
+          top: 0,
+          left: "calc(0px - var(--safe-left))",
+          right: "calc(0px - var(--safe-right))",
+          height: "var(--safe-top)",
+          backgroundColor: "background.default",
+          pointerEvents: "none",
+        },
+        transition: "background-color 0.4s ease, box-shadow 0.4s ease",
       }}
     >
       <Box

@@ -242,9 +242,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
     <Box
       sx={{
         position: "fixed",
-        top: 88, // Reduced from 92
-        bottom: 12, // Reduced from 16
-        left: 16,
+        top: "calc(88px + var(--safe-top))",
+        bottom: "calc(12px + var(--safe-bottom))",
+        left: "calc(16px + var(--safe-left))",
         zIndex: 1100,
         transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
         display: isMobile && !isSidebarExpanded ? "none" : "block"

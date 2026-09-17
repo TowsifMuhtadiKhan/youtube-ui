@@ -26,6 +26,8 @@ dist-ssr
 # Environment Variables
 .env.*
 !.env.example
+!.env.android.example
+!.env.ios.example
 .env
 .env.local
 .env.development.local

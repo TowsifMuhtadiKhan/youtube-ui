@@ -107,6 +107,7 @@ const AppContent = () => {
 
   return (
     <Box
+      className="app-shell"
       sx={{
         minHeight: "100vh",
         backgroundColor: "background.default",

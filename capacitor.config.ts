@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.towsif.youtube',
-  appName: 'YouTubeUI',
+  appName: 'LittleLoop',
   webDir: 'dist'
 };
 
