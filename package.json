@@ -12,7 +12,9 @@
     "backend:stop": "supabase stop",
     "backend:configure": "node scripts/configure-local-supabase.mjs",
     "backend:test": "node scripts/test-supabase.mjs",
-    "backend:test:api": "node scripts/test-supabase-http.mjs"
+    "backend:test:api": "node scripts/test-supabase-http.mjs",
+    "predev": "node scripts/ensure-local-env.mjs",
+    "test:ui": "node scripts/test-responsive.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.3.0",
     "@eslint/js": "^9.30.1",
+    "@playwright/test": "1.63.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",

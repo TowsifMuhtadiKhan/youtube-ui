@@ -11,16 +11,16 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
-        name: "TomTube",
-        short_name: "TomTube",
-        description: "A Premium Media Experience",
-        theme_color: "#0f0f0f",
-        background_color: "#0f0f0f",
+        name: "LittleLoop",
+        short_name: "LittleLoop",
+        description: "Your family?s favourite videos, thoughtfully chosen.",
+        theme_color: "#0b132b",
+        background_color: "#0b132b",
         display: "standalone",
         start_url: "/",
         icons: [
           {
-            src: "/youtube-svgrepo-com.svg",
+            src: "/littleloop.svg",
             sizes: "any",
             type: "image/svg+xml"
           }

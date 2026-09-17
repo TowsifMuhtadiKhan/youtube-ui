@@ -10,7 +10,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import MediaBrowser from "./components/Shorts";
-import VideoPage from "./components/VideoPage";
+import WatchPage from "./components/WatchPage";
+import HistoryPage from "./components/HistoryPage";
 import { CircularProgress, useMediaQuery, useTheme } from "@mui/material";
 import { DrivePlayer } from "./components/DrivePlayer";
 import Settings from "./components/Settings";
@@ -23,6 +24,7 @@ import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
 import Box from "@mui/material/Box";
 import { AppThemeProvider } from "./components/ThemeContext";
+import KidsTheme from './components/KidsTheme';
 
 const LoadingScreen = () => (
   <Box
@@ -67,7 +69,7 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
 const AppContent = () => {
   const theme = useTheme();
 
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [isSidebarExpanded, setSidebarExpanded] = useState(!isMobile);
   const location = useLocation();
 
@@ -108,6 +110,7 @@ const AppContent = () => {
       sx={{
         minHeight: "100vh",
         backgroundColor: "background.default",
+        color: 'text.primary',
         transition: "background-color 0.3s ease",
       }}
     >
@@ -125,6 +128,9 @@ const AppContent = () => {
       )}
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/watch/:id" element={<ProtectedRoute><WatchPage isSidebarExpanded={isSidebarExpanded}/></ProtectedRoute>}/>
+        <Route path="/history" element={<ProtectedRoute><HistoryPage isSidebarExpanded={isSidebarExpanded}/></ProtectedRoute>}/>
+        <Route path="/kids/history" element={<ProtectedRoute><HistoryPage kids/></ProtectedRoute>}/>
 <Route path="/parent" element={<ProtectedRoute><ParentMode isSidebarExpanded={isSidebarExpanded} /></ProtectedRoute>} />
 <Route path="/kids" element={<ProtectedRoute><ChildMode /></ProtectedRoute>} />
 <Route path="/kids/watch/:id" element={<ProtectedRoute><ChildPlayer /></ProtectedRoute>} />
@@ -157,7 +163,7 @@ const AppContent = () => {
           path="/video/:id"
           element={
             <ProtectedRoute>
-              <VideoPage isSidebarExpanded={isSidebarExpanded} />
+              <WatchPage isSidebarExpanded={isSidebarExpanded} />
             </ProtectedRoute>
           }
         />
@@ -204,7 +210,7 @@ const App: React.FC = () => {
     <AppThemeProvider>
       <Router>
         <AuthProvider>
-          <AppContent />
+          <KidsTheme><AppContent /></KidsTheme>
         </AuthProvider>
       </Router>
     </AppThemeProvider>

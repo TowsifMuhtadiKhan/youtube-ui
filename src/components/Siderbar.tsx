@@ -33,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isDark = theme.palette.mode === "dark";
   const { primaryColor } = useThemeMode();
   const { isAdmin, user, role } = useAuth();
@@ -51,8 +51,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   ];
 
   const parentalSections = [
-    { icon: <ChildCareIcon sx={{ color: "#ff9800" }} />, label: "Kids Zone", path: "/kids" },
-    { icon: <FamilyRestroomIcon sx={{ color: "#2196f3" }} />, label: "Parent Mode", path: "/parent" },
+    { icon: <ChildCareIcon sx={{ color: "primary.main" }} />, label: "LittleLoop Kids", path: "/kids" },
+    { icon: <FamilyRestroomIcon sx={{ color: "primary.main" }} />, label: "Parent Mode", path: "/parent" },
   ];
 
   const lastSections = [
@@ -64,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const isActive = (path: string) => location.pathname === path;
 
   // Header Match Style (Floating Glass)
-  const glassBg = isDark ? "rgba(10,10,10,0.75)" : "rgba(255,255,255,0.75)";
+  const glassBg = isDark ? "rgba(11,19,43,0.95)" : "rgba(255,255,255,0.75)";
   const glassBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   
   const bgActive = `${primaryColor}15`;

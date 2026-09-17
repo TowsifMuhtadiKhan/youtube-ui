@@ -1,784 +1,599 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
   CardMedia,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
-  InputAdornment,
-  LinearProgress,
-  Slider,
+  MenuItem,
   Tab,
   Tabs,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import VideoLibraryGrid from "../VideoLibraryGrid";
 import { useNavigate } from "react-router-dom";
-import SearchIcon from "@mui/icons-material/Search";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import ChildCareIcon from "@mui/icons-material/ChildCare";
-import LockIcon from "@mui/icons-material/Lock";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import AddAlarmIcon from "@mui/icons-material/AddAlarm";
-import { fetchSearchResults, type YouTubeVideoInfo } from "../../api/youtube";
 import {
-  addExtraBonusMinutes,
-  approveVideo,
-  fetchApprovedVideos,
-  fetchScreenTime,
-  getOrCreateChildId,
-  removeApprovedVideo,
-  setParentPin,
-  updateDailyLimit,
-  type ApprovedVideo,
-  type ScreenTimeData,
-} from "../../api/parentalApi";
-
-interface ParentModeProps {
+  discoverYouTube,
+  loadChannelVideos,
+  loadYouTubePlaylist,
+  type ChannelResult,
+  type DiscoveryPage,
+} from "../../api/youtubeDiscovery";
+import {
+  addToPlaylist,
+  decodeTitle,
+  deleteVideo,
+  listPlaylists,
+  listVideos,
+  newPlaylist,
+  saveVideo,
+  type Audience,
+  type LibraryPlaylist,
+  type VideoInput,
+} from "../../api/libraryApi";
+export default function ParentMode({
+  isSidebarExpanded = true,
+}: {
   isSidebarExpanded?: boolean;
-}
-
-const ParentMode: React.FC<ParentModeProps> = ({ isSidebarExpanded = true }) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+}) {
   const navigate = useNavigate();
-  const childId = getOrCreateChildId();
-  const sidebarWidth = isSidebarExpanded ? 242 : 104;
-
-  const [activeTab, setActiveTab] = useState<"search" | "approved">("search");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<YouTubeVideoInfo[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [approvedVideos, setApprovedVideos] = useState<ApprovedVideo[]>([]);
-  const [screenTime, setScreenTime] = useState<ScreenTimeData | null>(null);
-  const [loadingInitial, setLoadingInitial] = useState(true);
-  const [savingLimit, setSavingLimit] = useState(false);
-  const [tempLimitMinutes, setTempLimitMinutes] = useState(60);
-  const [statusMessage, setStatusMessage] = useState("");
-
-  const [savingVideo, setSavingVideo] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  // PIN settings dialog
-  const [pinDialogOpen, setPinDialogOpen] = useState(false);
-  const [currentPinInput, setCurrentPinInput] = useState("");
-  const [newPinInput, setNewPinInput] = useState("");
-  const [pinError, setPinError] = useState("");
-  const [pinSuccess, setPinSuccess] = useState("");
-
-  // Load initial data
-  const loadData = async () => {
+  const [addOpen, setAddOpen] = useState(false);
+  const mobile = useMediaQuery(useTheme().breakpoints.down("sm"));
+  const [source, setSource] = useState<"videos" | "channel" | "playlist">(
+    "videos",
+  );
+  const [channels, setChannels] = useState<ChannelResult[]>([]);
+  const [browsePlaylist, setBrowsePlaylist] = useState("");
+  const [nextPage, setNextPage] = useState("");
+  const [audience, setAudience] = useState<Audience>("parent"),
+    [tab, setTab] = useState("search"),
+    [query, setQuery] = useState("");
+  const [results, setResults] = useState<VideoInput[]>([]),
+    [saved, setSaved] = useState<VideoInput[]>([]),
+    [playlists, setPlaylists] = useState<LibraryPlaylist[]>([]);
+  const [playlistId, setPlaylistId] = useState(""),
+    [playlistName, setPlaylistName] = useState("");
+  const [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(true),
+    [searched, setSearched] = useState(false),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState("");
+  const label = audience === "parent" ? "My Videos" : "Kids Videos";
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
-      const [approvedList, st] = await Promise.all([
-        fetchApprovedVideos(childId),
-        fetchScreenTime(childId),
-      ]);
-      setApprovedVideos(approvedList);
-      setScreenTime(st);
-      setTempLimitMinutes(st.dailyLimitMinutes ?? 60);
-    } catch (err) {
-      console.error("Error loading parental data:", err);
-      setStatusMessage("Unable to load parental settings. Check the backend connection and reload.");
+      await task();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Please try again.");
     } finally {
-      setLoadingInitial(false);
+      setBusy(false);
     }
   };
-
   useEffect(() => {
-    void loadData();
-
-  }, []);
-
-  const handleSearch = async (q: string) => {
-    const query = q.trim();
-    if (!query) return;
-    setSearching(true);
-    setHasSearched(true);
-    setSearchResults([]);
-    setStatusMessage("");
-    try {
-      const results = await fetchSearchResults(query, 12, true);
-      setSearchResults(results);
-    } catch (err) {
-      console.error("Search failed:", err);
-      setStatusMessage(err instanceof Error ? err.message : "Failed to search YouTube videos.");
-    } finally {
-      setSearching(false);
-    }
+    let active = true;
+    setLoading(true);
+    setError("");
+    setPlaylistId("");
+    Promise.all([listVideos(audience), listPlaylists(audience)])
+      .then(([v, p]) => {
+        if (active) {
+          setSaved(v);
+          setPlaylists(p);
+        }
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [audience]);
+  const showPage = (page: DiscoveryPage, append = false) => {
+    const videos = page.videos.map((v) => ({
+      youtubeVideoId: v.id,
+      title: decodeTitle(v.title),
+      thumbnail: v.thumbnail,
+      channelName: decodeTitle(v.subTitle),
+    }));
+    setResults((old) =>
+      append
+        ? [
+            ...old,
+            ...videos.filter(
+              (v) => !old.some((o) => o.youtubeVideoId === v.youtubeVideoId),
+            ),
+          ]
+        : videos,
+    );
+    setChannels(page.channels || []);
+    setBrowsePlaylist(page.playlistId || "");
+    setNextPage(page.nextPageToken || "");
   };
-
-  const isVideoApproved = (videoId: string) => {
-    return approvedVideos.some((v) => v.youtubeVideoId === videoId);
-  };
-
-  const handleToggleApprove = async (video: YouTubeVideoInfo) => {
-    if (savingVideo) return;
-    setSavingVideo(true);
-    try {
-      if (isVideoApproved(video.id)) {
-        const updated = await removeApprovedVideo(childId, video.id);
-        setApprovedVideos(updated);
-        setStatusMessage(`Removed "${video.title}" from child whitelist.`);
+  const search = () =>
+    run(async () => {
+      setSearched(true);
+      setResults([]);
+      setChannels([]);
+      setNextPage("");
+      setBrowsePlaylist("");
+      showPage(await discoverYouTube(query, source));
+    });
+  const add = (video: VideoInput) =>
+    run(async () => {
+      if (playlistId) {
+        const p = await addToPlaylist(audience, playlistId, video);
+        setPlaylists((items) =>
+          items.map((item) => (item.id === p.id ? p : item)),
+        );
+        setSaved(await listVideos(audience));
       } else {
-        const updated = await approveVideo(childId, {
-          youtubeVideoId: video.id,
-          title: video.title,
-          thumbnail: video.thumbnail,
-          channelName: video.subTitle || "YouTube Creator",
-          duration: video.duration || "",
-        });
-        setApprovedVideos(updated);
-        setStatusMessage(`Saved "${video.title}". It is now available on Home and in Kids Zone.`);
+        setSaved(await saveVideo(audience, video));
       }
-    } catch (err) {
-      console.error("Failed to update approval:", err);
-      setStatusMessage(err instanceof Error ? err.message : "Failed to save video.");
-    } finally { setSavingVideo(false); }
-  };
-
-  const handleRemoveApproved = async (youtubeVideoId: string, title: string) => {
-    try {
-      const updated = await removeApprovedVideo(childId, youtubeVideoId);
-      setApprovedVideos(updated);
-      setStatusMessage(`Removed "${title}".`);
-    } catch (err) {
-      console.error("Failed to remove:", err);
-      setStatusMessage("Failed to remove video.");
-    }
-  };
-
-  const handleSaveLimit = async () => {
-    setSavingLimit(true);
-    setStatusMessage("");
-    try {
-      const updated = await updateDailyLimit(childId, tempLimitMinutes);
-      setScreenTime(updated);
-      setStatusMessage(`Daily watch limit set to ${tempLimitMinutes} minutes.`);
-    } catch (err) {
-      console.error("Failed to save limit:", err);
-      setStatusMessage("Failed to save daily limit.");
-    } finally {
-      setSavingLimit(false);
-    }
-  };
-
-  const handleAddBonus = async (minutes: number) => {
-    try {
-      const updated = await addExtraBonusMinutes(childId, minutes);
-      setScreenTime(updated);
-      setStatusMessage(`Added +${minutes} minutes of bonus screen time!`);
-    } catch (err) {
-      console.error("Failed to add bonus:", err);
-      setStatusMessage("Failed to add bonus time.");
-    }
-  };
-
-  const handleUpdatePin = async () => {
-    setPinError("");
-    setPinSuccess("");
-    if (!newPinInput || newPinInput.trim().length < 4) {
-      setPinError("New PIN must be at least 4 digits.");
-      return;
-    }
-    try {
-    const result = await setParentPin(childId, newPinInput.trim(), currentPinInput.trim());
-    if (result.success) {
-      setPinSuccess("Parent PIN updated successfully!");
-      setTimeout(() => {
-        setPinDialogOpen(false);
-        setCurrentPinInput("");
-        setNewPinInput("");
-        setPinSuccess("");
-      }, 1200);
-    } else {
-      setPinError(result.error || "Failed to update PIN. Check current PIN.");
-    }
-    } catch { setPinError("Unable to update PIN. Check the backend connection and try again."); }
-  };
-
-  const handleEnterChildMode = () => {
-    localStorage.setItem("ytui_active_mode", "child");
-    navigate("/kids");
-  };
-
-  const watchedMinutes = screenTime ? Math.floor(screenTime.watchedSeconds / 60) : 0;
-  const remainingMinutes = screenTime ? Math.ceil(screenTime.remainingSeconds / 60) : 0;
-  const totalLimit = screenTime ? screenTime.totalAllowedMinutes : 60;
-  const progressPercent = Math.min(100, Math.round((watchedMinutes / (totalLimit || 1)) * 100));
-
-  if (loadingInitial) return <Box sx={{ mt: "100px", ml: { md: `${sidebarWidth}px` }, p: 4 }}><CircularProgress /></Box>;
-
+      setNotice(
+        "Added to " +
+          label +
+          (playlistId ? " and the selected playlist." : "."),
+      );
+    });
   return (
     <Box
+      component="main"
       sx={{
-        marginLeft: { xs: 0, md: `${sidebarWidth}px` },
-        marginTop: "88px",
-        minHeight: "calc(100vh - 88px)",
-        p: { xs: 2, md: 4 },
-        backgroundColor: isDark ? "#0c0d10" : "#f4f6f9",
+        ml: { xs: 0, md: isSidebarExpanded ? "242px" : "104px" },
+        mt: "88px",
+        p: { xs: 2, md: 3 },
+        pb: { xs: 10, md: 4 },
+        minWidth: 0,
       }}
     >
-      {/* Top Header Card */}
-      <Card
+      <Box
         sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+          justifyContent: "space-between",
+          alignItems: "center",
           mb: 3,
-          p: 3,
-          borderRadius: 3,
-          background: isDark
-            ? "linear-gradient(135deg, #1b2333 0%, #111622 100%)"
-            : "linear-gradient(135deg, #ffffff 0%, #eef2f7 100%)",
-          boxShadow: isDark
-            ? "0 8px 24px rgba(0,0,0,0.4)"
-            : "0 8px 24px rgba(0,0,0,0.06)",
         }}
       >
-        <Box
-          display="flex"
-          flexDirection={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          gap={2}
-        >
-          <Box>
-            <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
-              <Typography variant="h4" fontWeight={800} color="primary">
-                Parental Control Center
-              </Typography>
-              <Chip
-                label="Parent Mode"
-                color="primary"
-                size="small"
-                sx={{ fontWeight: 700 }}
-              />
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              Curate videos, set daily time limits, and protect what your child watches.
-            </Typography>
-          </Box>
-
-          <Box display="flex" gap={1.5} flexWrap="wrap">
-            <Button
-              variant="outlined"
-              startIcon={<LockIcon />}
-              onClick={() => setPinDialogOpen(true)}
-              sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
-            >
-              Parent PIN Settings
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<ChildCareIcon />}
-              onClick={handleEnterChildMode}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 700,
-                px: 2.5,
-                boxShadow: "0 4px 14px rgba(46, 125, 50, 0.35)",
-              }}
-            >
-              Enter Child Mode
-            </Button>
-          </Box>
-        </Box>
-      </Card>
-
-      {/* Screen Time & Controls Grid */}
-      <Grid container spacing={3} mb={3}>
-        {/* Screen Time Stats Card */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              height: "100%",
-              backgroundColor: isDark ? "#141822" : "#ffffff",
-            }}
+        <Box>
+          <Typography
+            component="h1"
+            sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 800 }}
           >
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <AccessTimeIcon color="primary" />
-              <Typography variant="h6" fontWeight={700}>
-                Today's Watch Time & Limits
-              </Typography>
-            </Box>
-
-            <Box mb={2}>
-              <Box display="flex" justifyContent="space-between" mb={0.8}>
-                <Typography variant="body2" color="text.secondary">
-                  Watched: <strong>{watchedMinutes} mins</strong> of{" "}
-                  <strong>{totalLimit} mins</strong>
-                </Typography>
-                <Typography
-                  variant="body2"
-                  fontWeight={700}
-                  color={remainingMinutes > 0 ? "success.main" : "error.main"}
-                >
-                  {remainingMinutes > 0
-                    ? `${remainingMinutes} mins remaining`
-                    : "Time limit reached!"}
-                </Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={progressPercent}
-                sx={{
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#e0e0e0",
-                  "& .MuiLinearProgress-bar": {
-                    backgroundColor:
-                      progressPercent >= 100
-                        ? "#f44336"
-                        : progressPercent > 75
-                        ? "#ff9800"
-                        : "#4caf50",
-                  },
-                }}
-              />
-            </Box>
-
-            <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-              Only actual video playback time is counted. Pausing freezes the timer.
-            </Typography>
-
-            <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
-              <Typography variant="body2" fontWeight={600}>
-                Quick Bonus Time:
-              </Typography>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<AddAlarmIcon />}
-                onClick={() => handleAddBonus(10)}
-                sx={{ borderRadius: 2, textTransform: "none" }}
-              >
-                +10 min
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<AddAlarmIcon />}
-                onClick={() => handleAddBonus(30)}
-                sx={{ borderRadius: 2, textTransform: "none" }}
-              >
-                +30 min
-              </Button>
-            </Box>
-          </Card>
-        </Grid>
-
-        {/* Set Daily Limit Card */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              height: "100%",
-              backgroundColor: isDark ? "#141822" : "#ffffff",
-            }}
-          >
-            <Typography variant="h6" fontWeight={700} mb={1}>
-              Configure Daily Limit
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={2.5}>
-              Select maximum allowable watch time for your child per day:
-            </Typography>
-
-            <Box px={1} mb={2}>
-              <Slider
-                value={tempLimitMinutes}
-                min={10}
-                max={180}
-                step={5}
-                marks={[
-                  { value: 15, label: "15m" },
-                  { value: 30, label: "30m" },
-                  { value: 60, label: "1h" },
-                  { value: 90, label: "1.5h" },
-                  { value: 120, label: "2h" },
-                ]}
-                valueLabelDisplay="on"
-                onChange={(_, val) => setTempLimitMinutes(val as number)}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
-              <Typography variant="body2">
-                Selected: <strong>{tempLimitMinutes} minutes/day</strong>
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={handleSaveLimit}
-                disabled={savingLimit}
-                sx={{ borderRadius: 2, textTransform: "none", px: 3 }}
-              >
-                {savingLimit ? <CircularProgress size={20} /> : "Save Limit"}
-              </Button>
-            </Box>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Status / feedback alert */}
-      {statusMessage && (
-        <Box
-          sx={{
-            mb: 3,
-            p: 1.5,
-            borderRadius: 2,
-            backgroundColor: isDark ? "rgba(33, 150, 243, 0.15)" : "#e3f2fd",
-            color: isDark ? "#90caf9" : "#1565c0",
-            border: "1px solid",
-            borderColor: isDark ? "rgba(33, 150, 243, 0.3)" : "#bbdefb",
-            fontSize: "0.9rem",
-            fontWeight: 600,
-          }}
-        >
-          {statusMessage}
-        </Box>
-      )}
-
-      {/* Whitelist / Search Section */}
-      <Card
-        sx={{
-          borderRadius: 3,
-          backgroundColor: isDark ? "#141822" : "#ffffff",
-          p: { xs: 2, md: 3 },
-        }}
-      >
-        <Box
-          display="flex"
-          flexDirection={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          borderBottom="1px solid"
-          borderColor={isDark ? "rgba(255,255,255,0.08)" : "#e0e0e0"}
-          pb={2}
-          mb={3}
-          gap={2}
-        >
-          <Tabs
-            value={activeTab}
-            onChange={(_, val) => setActiveTab(val)}
-            textColor="primary"
-            indicatorColor="primary"
-          >
-            <Tab
-              value="search"
-              label="Search YouTube"
-              sx={{ textTransform: "none", fontWeight: 700 }}
-            />
-            <Tab
-              value="approved"
-              label={`Approved Whitelist (${approvedVideos.length})`}
-              sx={{ textTransform: "none", fontWeight: 700 }}
-            />
-          </Tabs>
-
-          {activeTab === "search" && (
-            <Box
-              component="form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void handleSearch(searchQuery);
-              }}
-              display="flex"
-              gap={1}
-              width={{ xs: "100%", sm: "auto" }}
-            >
-              <TextField
-                size="small"
-                placeholder="Search YouTube videos..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ width: { xs: "100%", sm: 320 } }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={searching}
-                sx={{ borderRadius: 2, textTransform: "none", px: 2.5 }}
-              >
-                {searching ? <CircularProgress size={20} /> : "Search"}
-              </Button>
-            </Box>
-          )}
-        </Box>
-
-        {/* Tab 1: YouTube Search Results */}
-        {activeTab === "search" && (
-          <Box>
-            {searching ? (
-              <Box textAlign="center" py={6}>
-                <CircularProgress color="primary" />
-                <Typography variant="body2" color="text.secondary" mt={2}>
-                  Searching YouTube...
-                </Typography>
-              </Box>
-            ) : searchResults.length === 0 ? (
-              <Box textAlign="center" py={6}>
-                <Typography variant="body1" color="text.secondary">
-                  {hasSearched ? "No results to show. Try another search or check the message above." : "Search YouTube, then select Add to approved videos. Only your selections appear on Home and in Kids Zone."}
-                </Typography>
-              </Box>
-            ) : (
-              <Grid container spacing={2.5}>
-                {searchResults.map((video) => {
-                  const approved = isVideoApproved(video.id);
-                  return (
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={video.id}>
-                      <Card
-                        sx={{
-                          height: "100%",
-                          display: "flex",
-                          flexDirection: "column",
-                          borderRadius: 2.5,
-                          overflow: "hidden",
-                          border: approved ? "2px solid #4caf50" : "1px solid transparent",
-                          backgroundColor: isDark ? "#1b202c" : "#fafafa",
-                          transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                          "&:hover": {
-                            transform: "translateY(-4px)",
-                            boxShadow: isDark
-                              ? "0 8px 20px rgba(0,0,0,0.5)"
-                              : "0 8px 20px rgba(0,0,0,0.1)",
-                          },
-                        }}
-                      >
-                        <Box position="relative">
-                          <CardMedia
-                            component="img"
-                            height="160"
-                            image={video.thumbnail}
-                            alt={video.title}
-                            sx={{ objectFit: "cover" }}
-                          />
-                          {approved && (
-                            <Chip
-                              icon={<CheckCircleIcon sx={{ fill: "#fff !important" }} />}
-                              label="Approved"
-                              color="success"
-                              size="small"
-                              sx={{
-                                position: "absolute",
-                                top: 8,
-                                right: 8,
-                                fontWeight: 700,
-                              }}
-                            />
-                          )}
-                        </Box>
-
-                        <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                          <Typography
-                            variant="subtitle1"
-                            fontWeight={700}
-                            lineHeight={1.3}
-                            sx={{
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                              overflow: "hidden",
-                              mb: 0.8,
-                            }}
-                          >
-                            {video.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {video.subTitle}
-                          </Typography>
-                        </CardContent>
-
-                        <Box p={1.5} pt={0}>
-                          <Button
-                            fullWidth
-                            variant={approved ? "outlined" : "contained"}
-                            color={approved ? "error" : "primary"}
-                            startIcon={
-                              approved ? <DeleteOutlineIcon /> : <AddCircleOutlineIcon />
-                            }
-                            disabled={savingVideo}
-                            onClick={() => handleToggleApprove(video)}
-                            sx={{
-                              borderRadius: 2,
-                              textTransform: "none",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {savingVideo ? "Saving..." : approved ? "Remove from Child" : "Add to approved videos"}
-                          </Button>
-                        </Box>
-                      </Card>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            )}
-          </Box>
-        )}
-
-        {/* Tab 2: Whitelist of Approved Videos */}
-        {activeTab === "approved" && (
-          <Box>
-            {approvedVideos.length === 0 ? (
-              <Box textAlign="center" py={8}>
-                <ChildCareIcon sx={{ fontSize: 48, color: "text.secondary", mb: 1 }} />
-                <Typography variant="h6" fontWeight={700} mb={0.5}>
-                  No Approved Videos Yet
-                </Typography>
-                <Typography variant="body2" color="text.secondary" mb={2}>
-                  Search YouTube on the first tab and click "Approve for Child" to build
-                  the whitelist.
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => setActiveTab("search")}
-                  sx={{ borderRadius: 2, textTransform: "none" }}
-                >
-                  Search & Approve Videos
-                </Button>
-              </Box>
-            ) : (
-              <Grid container spacing={2.5}>
-                {approvedVideos.map((video) => (
-                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={video.youtubeVideoId}>
-                    <Card
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        flexDirection: "column",
-                        borderRadius: 2.5,
-                        overflow: "hidden",
-                        backgroundColor: isDark ? "#1b202c" : "#fafafa",
-                      }}
-                    >
-                      <CardMedia
-                        component="img"
-                        height="160"
-                        image={video.thumbnail}
-                        alt={video.title}
-                        sx={{ objectFit: "cover" }}
-                      />
-                      <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                        <Typography
-                          variant="subtitle1"
-                          fontWeight={700}
-                          lineHeight={1.3}
-                          sx={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            mb: 0.8,
-                          }}
-                        >
-                          {video.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {video.channelName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" mt={0.5} display="block">
-                          Approved on: {new Date(video.approvedAt).toLocaleDateString()}
-                        </Typography>
-                      </CardContent>
-
-                      <Box p={1.5} pt={0}>
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          color="error"
-                          startIcon={<DeleteOutlineIcon />}
-                          onClick={() => handleRemoveApproved(video.youtubeVideoId, video.title)}
-                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
-                        >
-                          Remove from Whitelist
-                        </Button>
-                      </Box>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Box>
-        )}
-      </Card>
-
-      {/* Parent PIN Settings Dialog */}
-      <Dialog
-        open={pinDialogOpen}
-        onClose={() => setPinDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 700 }}>Parent PIN Configuration</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            The PIN is required to exit Child Mode or adjust parent settings. Default PIN is{" "}
-            <strong>1234</strong>.
+            Parent Mode
           </Typography>
-
-          <TextField
-            fullWidth
-            label="Current PIN"
-            type="password"
-            size="small"
-            value={currentPinInput}
-            onChange={(e) => setCurrentPinInput(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-
-          <TextField
-            fullWidth
-            label="New 4-Digit PIN"
-            type="password"
-            size="small"
-            value={newPinInput}
-            onChange={(e) => setNewPinInput(e.target.value)}
-          />
-
-          {pinError && (
-            <Typography variant="caption" color="error" display="block" mt={1}>
-              {pinError}
-            </Typography>
-          )}
-          {pinSuccess && (
-            <Typography variant="caption" color="success.main" display="block" mt={1}>
-              {pinSuccess}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setPinDialogOpen(false)} sx={{ textTransform: "none" }}>
-            Cancel
+          <Typography color="text.secondary">
+            Choose what you watch and what your child can watch.
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button onClick={() => navigate("/playlist")} variant="outlined">
+            Manage playlists
           </Button>
           <Button
             variant="contained"
-            onClick={handleUpdatePin}
-            sx={{ borderRadius: 2, textTransform: "none" }}
+            onClick={() => {
+              localStorage.setItem("ytui_active_mode", "child");
+              navigate("/kids");
+            }}
           >
-            Update PIN
+            Enter LittleLoop Kids
+          </Button>
+        </Box>
+      </Box>
+      <ToggleButtonGroup
+        value={audience}
+        exclusive
+        onChange={(_, v) => {
+          if (v && !busy) setAudience(v);
+        }}
+        fullWidth
+        sx={{ mb: 3, maxWidth: 480 }}
+      >
+        <ToggleButton value="parent">My Videos</ToggleButton>
+        <ToggleButton value="kids">Kids Videos</ToggleButton>
+      </ToggleButtonGroup>
+      {error && !addOpen && (
+        <Alert severity="error" sx={{ mb: 2, overflowWrap: "anywhere" }}>
+          {error}
+        </Alert>
+      )}
+      {notice && !addOpen && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {notice}
+        </Alert>
+      )}
+      <Card sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 2,
+            mb: 2,
+          }}
+        >
+          <Box>
+            <Typography variant="h6">
+              {label} ({saved.length})
+            </Typography>
+            <Typography color="text.secondary">
+              {audience === "parent"
+                ? "Your saved videos, just for you."
+                : "Videos you have approved for your child."}
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            disabled={loading || busy}
+            onClick={() => {
+              setTab("search");
+              setAddOpen(true);
+            }}
+          >
+            Add videos
+          </Button>
+          <Button
+            disabled={loading || busy}
+            onClick={() => {
+              setTab("saved");
+              setAddOpen(true);
+            }}
+          >
+            Manage saved videos
+          </Button>
+        </Box>
+        {loading ? (
+          <CircularProgress />
+        ) : (
+          <VideoLibraryGrid videos={saved} kids={audience === "kids"} />
+        )}
+      </Card>
+      <Dialog
+        open={addOpen}
+        onClose={() => {
+          if (!busy) setAddOpen(false);
+        }}
+        fullWidth
+        maxWidth="lg"
+        fullScreen={mobile}
+        aria-labelledby="add-videos-title"
+      >
+        <DialogTitle id="add-videos-title">Add videos to {label}</DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 2, md: 3 } }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, overflowWrap: "anywhere" }}>
+              {error}
+            </Alert>
+          )}
+          {notice && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {notice}
+            </Alert>
+          )}
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+            Save to {label}
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            {audience === "parent"
+              ? "These videos appear on your Home page only."
+              : "Only these videos are available in LittleLoop Kids."}
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 1.5,
+              mb: 2,
+            }}
+          >
+            <TextField
+              select
+              label="Playlist (optional)"
+              value={playlistId}
+              onChange={(e) => setPlaylistId(e.target.value)}
+              disabled={busy || loading}
+              fullWidth
+            >
+              <MenuItem value="">Library only</MenuItem>
+              {playlists.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="New playlist name"
+              value={playlistName}
+              onChange={(e) => setPlaylistName(e.target.value)}
+              fullWidth
+            />
+            <Button
+              disabled={busy || !playlistName.trim()}
+              onClick={() =>
+                void run(async () => {
+                  const p = await newPlaylist(audience, playlistName.trim());
+                  setPlaylists((old) => [p, ...old]);
+                  setPlaylistId(p.id);
+                  setPlaylistName("");
+                })
+              }
+              sx={{ flexShrink: 0 }}
+            >
+              Create playlist
+            </Button>
+          </Box>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="fullWidth"
+            sx={{ mb: 2 }}
+          >
+            <Tab value="search" label="Search YouTube" />
+            <Tab value="saved" label={"Saved (" + saved.length + ")"} />
+          </Tabs>
+          {tab === "search" && (
+            <>
+              <ToggleButtonGroup
+                exclusive
+                aria-label="Find videos by"
+                value={source}
+                disabled={busy}
+                sx={{
+                  mb: 2,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                  "& .MuiToggleButton-root": {
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "8px !important",
+                    m: "0 !important",
+                    flexGrow: 1,
+                  },
+                }}
+                onChange={(_, value) => {
+                  if (!value) return;
+                  setSource(value);
+                  setResults([]);
+                  setChannels([]);
+                  setNextPage("");
+                  setSearched(false);
+                }}
+              >
+                <ToggleButton value="videos">
+                  Video search or YouTube URL
+                </ToggleButton>
+                <ToggleButton value="channel">
+                  Channel name, @handle, or URL
+                </ToggleButton>
+                <ToggleButton value="playlist">
+                  YouTube playlist URL or ID
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <Box
+                component="form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void search();
+                }}
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 1,
+                  mb: 2,
+                }}
+              >
+                <TextField
+                  fullWidth
+                  label={
+                    source === "videos"
+                      ? "Search YouTube"
+                      : source === "channel"
+                        ? "Channel name or link"
+                        : "YouTube playlist link or ID"
+                  }
+                  placeholder={
+                    source === "videos"
+                      ? "Search or paste a YouTube video URL"
+                      : source === "channel"
+                        ? "Channel name, @handle, or channel URL"
+                        : "https://www.youtube.com/playlist?list=…"
+                  }
+                  disabled={busy}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  sx={{ minWidth: 0 }}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={busy || !query.trim()}
+                >
+                  Search
+                </Button>
+              </Box>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Load videos, then choose which ones to add to {label}. New
+                channel uploads are never added automatically.
+              </Typography>
+              {channels.length > 0 && (
+                <Box sx={{ display: "grid", gap: 2, mb: 2 }}>
+                  <Typography>Choose a channel to view its videos:</Typography>
+                  {channels.map((channel) => (
+                    <Card
+                      key={channel.id}
+                      variant="outlined"
+                      sx={{ p: 2, minWidth: 0 }}
+                    >
+                      <Typography
+                        sx={{ fontWeight: 700, overflowWrap: "anywhere" }}
+                      >
+                        {decodeTitle(channel.title)}
+                      </Typography>
+                      <Typography
+                        color="text.secondary"
+                        sx={{ overflowWrap: "anywhere" }}
+                      >
+                        {channel.description}
+                      </Typography>
+                      <Button
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            showPage(await loadChannelVideos(channel.id));
+                          })
+                        }
+                      >
+                        View videos
+                      </Button>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+              {busy && (
+                <CircularProgress
+                  size={24}
+                  aria-label="Loading"
+                  sx={{ mb: 2 }}
+                />
+              )}
+            </>
+          )}
+          {loading ? (
+            <CircularProgress />
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "minmax(0,1fr)",
+                  sm: "repeat(2,minmax(0,1fr))",
+                  lg: "repeat(3,minmax(0,1fr))",
+                },
+                gap: 2,
+              }}
+            >
+              {(tab === "search" ? results : saved).map((video) => {
+                const inList = saved.some(
+                  (v) => v.youtubeVideoId === video.youtubeVideoId,
+                );
+                const inPlaylist = playlists
+                  .find((p) => p.id === playlistId)
+                  ?.items.some((i) => i.videoId === video.youtubeVideoId);
+                return (
+                  <Card
+                    key={video.youtubeVideoId}
+                    variant="outlined"
+                    sx={{ minWidth: 0, borderRadius: 3 }}
+                  >
+                    <CardMedia
+                      component="img"
+                      image={video.thumbnail}
+                      alt={video.title}
+                      sx={{ aspectRatio: "16/9", objectFit: "cover" }}
+                    />
+                    <CardContent>
+                      <Typography
+                        sx={{ fontWeight: 700, overflowWrap: "anywhere" }}
+                      >
+                        {decodeTitle(video.title)}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ my: 1 }}>
+                        {video.channelName}
+                      </Typography>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        disabled={busy || (playlistId ? inPlaylist : inList)}
+                        onClick={() => void add(video)}
+                      >
+                        {(playlistId ? inPlaylist : inList)
+                          ? "Added"
+                          : "Add to " + (playlistId ? "playlist" : label)}
+                      </Button>
+                      {tab === "saved" && (
+                        <Button
+                          fullWidth
+                          color="error"
+                          disabled={busy}
+                          onClick={() =>
+                            void run(async () => {
+                              setSaved(
+                                await deleteVideo(
+                                  audience,
+                                  video.youtubeVideoId,
+                                ),
+                              );
+                              setPlaylists(await listPlaylists(audience));
+                            })
+                          }
+                        >
+                          Remove from {label}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </Box>
+          )}
+          {tab === "search" && nextPage && (
+            <Button
+              disabled={busy}
+              sx={{ mt: 2 }}
+              onClick={() =>
+                void run(async () => {
+                  showPage(
+                    await loadYouTubePlaylist(browsePlaylist, nextPage),
+                    true,
+                  );
+                })
+              }
+            >
+              Load more videos
+            </Button>
+          )}
+          {!loading &&
+            !busy &&
+            !(tab === "search" && channels.length) &&
+            (tab === "search" ? results : saved).length === 0 && (
+              <Typography
+                color="text.secondary"
+                sx={{ py: 4, textAlign: "center" }}
+              >
+                {tab === "saved"
+                  ? "No saved videos in this list yet."
+                  : searched
+                    ? "No results. Try another search."
+                    : "Search YouTube or paste a video, channel, or playlist link."}
+              </Typography>
+            )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={busy} onClick={() => setAddOpen(false)}>
+            Done
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
-};
-
-export default ParentMode;
+}

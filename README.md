@@ -18,7 +18,7 @@ This creates the separate local Supabase project youtube-ui and writes its publi
 ## Hosted setup (optional)
 
 1. Create or choose a Supabase project.
-2. Apply supabase/migrations/20260916172542_tomtube_backend.sql in the Supabase SQL Editor, or link the project with the Supabase CLI and push the migration.
+2. Apply all SQL files in supabase/migrations/ in filename order, or link your own dedicated project with the Supabase CLI and push the migrations.
 3. Copy .env.example to .env.local and set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY from your project's Connect dialog. Use only a publishable key in the browser, never a secret/service-role key.
 4. Set VITE_YOUTUBE_API_KEY for parent-initiated YouTube searches. Restrict that Google key to the YouTube Data API and your site origins.
 5. Run npm install and npm run dev. No Next.js server is required.
@@ -26,7 +26,9 @@ This creates the separate local Supabase project youtube-ui and writes its publi
 
 ## Content flow
 
-Parents search YouTube and select Add to approved videos. Selections are stored in Supabase under the signed-in user's ID. Home and Kids Zone read only that account's approved videos. Screen-time limits, daily usage, bonus minutes, PIN settings, and playlists also live in Supabase.
+In Parent Mode, click **Add videos** to open the popup (full screen on phones), then use the source buttons to search videos or paste a video URL, browse a channel by name/@handle/link, or load a YouTube playlist URL/ID. Channel-name searches let you choose the matching channel. Channel uploads and playlists load in pages with **Load more videos**. Only videos you explicitly add are saved to the selected parent/kids library and optional app playlist; future channel uploads are not automatically approved. Private, deleted, and non-embeddable videos are excluded from URL/playlist imports. YouTube browsing requires an available Data API key and quota.
+
+Parents search YouTube and select Add to approved videos. Choose My Videos or Kids Videos before adding. The two libraries and their playlists are separate; previous approvals remain in Kids Videos. Home shows My Videos, and Kids Zone shows only Kids Videos. Adding a video to a kids playlist also approves it for that library. Removing a video from a library removes it from that library's playlists. Watch history is stored separately for parent and kids playback. Screen-time limits, daily usage, bonus minutes, PIN settings, and playlists also live in Supabase.
 
 The initial parent PIN is 1234; change it in Parent Mode. PINs are hashed and never returned to the browser. The current family model has one child profile per parent account. Kid Mode uses the parent's signed-in session and a PIN-gated interface; it is not a separate untrusted child account.
 
@@ -47,3 +49,11 @@ The old backend/ directory is retained as migration reference because it contain
 ## Verification
 
 Run npm run build for the frontend. supabase/tests/backend.sql exercises the backend in a transaction and rolls back its fixtures. Use it on a disposable local Supabase database after applying the migration. It covers account isolation, approvals, playlist ownership, screen time, PIN changes, and admin/anonymous authorization.
+
+## Mobile and player behavior
+
+For local phone testing, open Vite on your computer's LAN address (run npm run dev -- --host). In development, a loopback Supabase URL is mapped to that same hostname so requests reach your computer. Your firewall must allow the frontend and Supabase ports. Hosted deployments need their own VITE_SUPABASE_URL and publishable key set before building.
+
+The YouTube iframe uses a sandbox without popup or top-navigation permissions. Links in the embed cannot open new tabs or replace the app page. The player is replaced with an in-app replay screen when a video ends. YouTube controls and branding remain visible; sandbox restrictions cannot prevent a user from manually opening another website in their browser.
+
+Run npm run test:ui with Vite and local Supabase running. The browser checks responsive layouts, the real sign-in flow, history and list separation, and sandbox navigation blocking using deterministic mocked player content. Real YouTube playback still depends on video embedding availability and the browser.

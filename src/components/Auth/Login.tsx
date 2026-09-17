@@ -17,7 +17,7 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import Logo from "../../assets/youtube-svgrepo-com.svg";
+const Logo = "/littleloop.svg";
 
 const inputSx = {
   "& .MuiOutlinedInput-root": {
@@ -156,7 +156,7 @@ const Login: React.FC = () => {
               mb: 2,
             }}
           >
-            <img src={Logo} alt="TomTube" style={{ height: 36 }} />
+            <img src={Logo} alt="LittleLoop" style={{ height: 36 }} />
             <Typography
               sx={{
                 fontSize: "24px",
@@ -166,7 +166,7 @@ const Login: React.FC = () => {
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              TomTube
+              LittleLoop
             </Typography>
           </Box>
           <Typography

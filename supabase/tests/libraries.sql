@@ -1,0 +1,34 @@
+begin;
+insert into auth.users(id,email,raw_app_meta_data) values ('20000000-0000-0000-0000-000000000001','libraries@example.test','{}');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',true);
+do $$
+declare parent_list jsonb; kids_list jsonb; r jsonb;
+begin
+ perform public.tomtube_api('videos.approve','{"audience":"parent","youtubeVideoId":"abcdefghijk","title":"Parent video"}');
+ assert jsonb_array_length(public.tomtube_api('videos.list','{"audience":"parent"}'))=1;
+ assert public.tomtube_api('videos.list','{"audience":"kids"}')='[]'::jsonb, 'Parent save leaked into kids list';
+ assert public.tomtube_api('playback.validate','{"youtubeVideoId":"abcdefghijk"}')->>'reason'='UNAPPROVED';
+ parent_list:=public.tomtube_api('playlists.create','{"audience":"parent","name":"Parents collection"}');
+ kids_list:=public.tomtube_api('playlists.create','{"audience":"kids","name":"Kids collection"}');
+ perform public.tomtube_api('playlists.add',jsonb_build_object('audience','parent','playlistId',parent_list->>'id','youtubeVideoId','abcdefghijk','title','Parent video'));
+ perform public.tomtube_api('playlists.add',jsonb_build_object('audience','kids','playlistId',kids_list->>'id','youtubeVideoId','lmnopqrstuv','title','Kids video'));
+ assert jsonb_array_length(public.tomtube_api('playlists.list','{"audience":"parent"}'))=1;
+ assert jsonb_array_length(public.tomtube_api('playlists.list','{"audience":"kids"}'))=1;
+ assert public.tomtube_api('videos.list','{"audience":"kids"}')->0->>'youtubeVideoId'='lmnopqrstuv';
+ assert jsonb_array_length(public.tomtube_api('videos.list','{"audience":"parent"}'))=1;
+ perform public.tomtube_api('history.record','{"audience":"parent","youtubeVideoId":"abcdefghijk"}');
+ perform public.tomtube_api('history.track','{"audience":"parent","youtubeVideoId":"abcdefghijk","seconds":5}');
+ perform public.tomtube_api('playback.track','{"youtubeVideoId":"lmnopqrstuv","seconds":5}');
+ assert (public.tomtube_api('history.list','{"audience":"parent"}')->0->>'watchedSeconds')::int=5;
+ assert public.tomtube_api('history.list','{"audience":"kids"}')->0->>'youtubeVideoId'='lmnopqrstuv';
+ perform public.tomtube_api('history.clear','{"audience":"parent"}');
+ assert public.tomtube_api('history.list','{"audience":"parent"}')='[]'::jsonb;
+ assert jsonb_array_length(public.tomtube_api('history.list','{"audience":"kids"}'))=1;
+ perform public.tomtube_api('videos.remove','{"audience":"kids","youtubeVideoId":"lmnopqrstuv"}');
+ assert jsonb_array_length(public.tomtube_api('playlists.list','{"audience":"kids"}')->0->'items')=0, 'Removed kid video remains in playlist';
+ assert not (public.tomtube_api('history.list','{"audience":"kids"}')->0->>'available')::boolean;
+ assert jsonb_array_length(public.tomtube_api('playlists.list','{"audience":"parent"}')->0->'items')=1, 'Kids removal modified parent playlist';
+end $$;
+rollback;
+select 'PASS: separate libraries, separate playlists, approval on add, removal, and separate persisted history' as result;

@@ -1,236 +1,320 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
-  CardContent,
   CircularProgress,
-  Grid,
+  MenuItem,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
 import {
-  addYoutubeUrlToPlaylist,
-  createPlaylist,
-  fetchPlaylists,
-  getOrCreateClientUserId,
-  type Playlist,
-} from "../api/playlistBackend";
-
-interface PlaylistPageProps {
+  addToPlaylist,
+  decodeTitle,
+  deletePlaylist,
+  listPlaylists,
+  listVideos,
+  newPlaylist,
+  removeFromPlaylist,
+  type Audience,
+  type LibraryPlaylist,
+  type VideoInput,
+} from "../api/libraryApi";
+export default function PlaylistPage({
+  isSidebarExpanded,
+}: {
   isSidebarExpanded: boolean;
-}
-
-const PlaylistPage: React.FC<PlaylistPageProps> = ({ isSidebarExpanded }) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-  const sidebarWidth = isSidebarExpanded ? 242 : 104;
-
-  const [userId, setUserId] = useState("");
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newPlaylistName, setNewPlaylistName] = useState("My Playlist");
-  const [urlInputs, setUrlInputs] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [error, setError] = useState("");
-
-  const pageBg = isDark ? "#0b0b0b" : "#f5f6f8";
-  const cardBg = isDark ? "rgba(255,255,255,0.04)" : "#ffffff";
-
-  const load = async (id: string) => {
-    setLoading(true);
+}) {
+  const navigate = useNavigate();
+  const [audience, setAudience] = useState<Audience>("parent"),
+    [playlists, setPlaylists] = useState<LibraryPlaylist[]>([]),
+    [videos, setVideos] = useState<VideoInput[]>([]),
+    [name, setName] = useState("");
+  const [selected, setSelected] = useState<Record<string, string>>({}),
+    [loading, setLoading] = useState(true),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true);
     setError("");
     try {
-      const list = await fetchPlaylists(id);
-      setPlaylists(list);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load playlists";
-      setError(message);
+      await task();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to update playlist.");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
-
   useEffect(() => {
-    const id = getOrCreateClientUserId();
-    setUserId(id);
-    void load(id);
-  }, []);
-
-  const onCreatePlaylist = async () => {
-    if (!userId || !newPlaylistName.trim()) {
-      return;
-    }
-
+    let active = true;
+    setLoading(true);
+    setSelected({});
     setError("");
-    try {
-      const created = await createPlaylist(userId, newPlaylistName.trim());
-      setPlaylists((prev) => [created, ...prev]);
-      setNewPlaylistName("");
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create playlist";
-      setError(message);
-    }
-  };
-
-  const onAddUrl = async (playlistId: string) => {
-    const youtubeUrl = (urlInputs[playlistId] || "").trim();
-    if (!youtubeUrl || !userId) {
-      return;
-    }
-
-    setSaving((prev) => ({ ...prev, [playlistId]: true }));
-    setError("");
-
-    try {
-      const updated = await addYoutubeUrlToPlaylist(
-        userId,
-        playlistId,
-        youtubeUrl,
-      );
-      setPlaylists((prev) =>
-        prev.map((p) => (p.id === playlistId ? updated : p)),
-      );
-      setUrlInputs((prev) => ({ ...prev, [playlistId]: "" }));
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to add video";
-      setError(message);
-    } finally {
-      setSaving((prev) => ({ ...prev, [playlistId]: false }));
-    }
-  };
-
-  const hasPlaylists = useMemo(() => playlists.length > 0, [playlists]);
-
+    Promise.all([listPlaylists(audience), listVideos(audience)])
+      .then(([p, v]) => {
+        if (active) {
+          setPlaylists(p);
+          setVideos(v);
+        }
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [audience]);
+  const update = (p: LibraryPlaylist) =>
+    setPlaylists((old) => old.map((item) => (item.id === p.id ? p : item)));
   return (
     <Box
+      component="main"
       sx={{
-        marginLeft: { xs: 0, md: `${sidebarWidth}px` },
-        marginTop: "88px",
-        minHeight: "calc(100vh - 88px)",
+        ml: { xs: 0, md: isSidebarExpanded ? "242px" : "104px" },
+        mt: "88px",
         p: { xs: 2, md: 3 },
-        backgroundColor: pageBg,
+        pb: 10,
       }}
     >
-      <Typography variant="h4" sx={{ fontWeight: 800, mb: 2 }}>
-        Your Playlists
+      <Typography component="h1" sx={{ fontSize: 28, fontWeight: 800, mb: 1 }}>
+        Playlists
       </Typography>
-
-      <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>
+        Make your own collections and separate collections for your child.
+      </Typography>
+      <ToggleButtonGroup
+        exclusive
+        value={audience}
+        onChange={(_, v) => {
+          if (v && !busy) setAudience(v);
+        }}
+        fullWidth
+        sx={{ maxWidth: 480, mb: 3 }}
+      >
+        <ToggleButton value="parent">My playlists</ToggleButton>
+        <ToggleButton value="kids">Kids playlists</ToggleButton>
+      </ToggleButtonGroup>
+      <Box
+        component="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run(async () => {
+            const p = await newPlaylist(audience, name.trim());
+            setPlaylists((old) => [p, ...old]);
+            setName("");
+          });
+        }}
+        sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: 3 }}
+      >
         <TextField
-          size="small"
           label="Playlist name"
-          value={newPlaylistName}
-          onChange={(e) => setNewPlaylistName(e.target.value)}
-          sx={{ minWidth: 250 }}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          sx={{ flexGrow: 1, minWidth: 0 }}
         />
-        <Button variant="contained" onClick={onCreatePlaylist}>
-          Create Playlist
+        <Button
+          variant="contained"
+          type="submit"
+          disabled={busy || !name.trim()}
+        >
+          Create playlist
         </Button>
+        <Button onClick={() => navigate("/parent")}>Find videos</Button>
       </Box>
-
       {error && (
-        <Typography sx={{ color: "error.main", mb: 2 }}>{error}</Typography>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
       )}
-
       {loading ? (
-        <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
-          <CircularProgress />
-        </Box>
-      ) : !hasPlaylists ? (
-        <Typography sx={{ opacity: 0.8 }}>
-          No playlist yet. Create one and add a YouTube URL.
-        </Typography>
+        <CircularProgress />
       ) : (
-        <Grid container spacing={2}>
-          {playlists.map((playlist) => (
-            <Grid size={{ xs: 12, lg: 6 }} key={playlist.id}>
-              <Card sx={{ backgroundColor: cardBg, borderRadius: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                    {playlist.name}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.75, mb: 2 }}>
-                    {playlist.items.length} video(s)
-                  </Typography>
-
-                  <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      label="Paste YouTube URL"
-                      value={urlInputs[playlist.id] || ""}
-                      onChange={(e) =>
-                        setUrlInputs((prev) => ({
-                          ...prev,
-                          [playlist.id]: e.target.value,
-                        }))
-                      }
-                    />
-                    <Button
-                      variant="outlined"
-                      disabled={!!saving[playlist.id]}
-                      onClick={() => onAddUrl(playlist.id)}
-                    >
-                      Add
-                    </Button>
-                  </Box>
-
-                  <Box sx={{ display: "grid", gap: 1.2 }}>
-                    {playlist.items.map((item) => (
-                      <Box
-                        key={item.id}
-                        sx={{
-                          display: "flex",
-                          gap: 1,
-                          alignItems: "center",
-                          p: 1,
-                          borderRadius: 2,
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.03)"
-                            : "#f8f8f8",
-                        }}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "minmax(0,1fr)",
+              lg: "repeat(2,minmax(0,1fr))",
+            },
+            gap: 3,
+          }}
+        >
+          {playlists.map((p) => (
+            <Card
+              key={p.id}
+              sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, minWidth: 0 }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 20,
+                    fontWeight: 700,
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {p.name}
+                </Typography>
+                <Button
+                  color="error"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      await deletePlaylist(audience, p.id);
+                      setPlaylists((old) => old.filter((x) => x.id !== p.id));
+                    })
+                  }
+                >
+                  Delete
+                </Button>
+              </Box>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                {p.items.length} videos
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Add a saved video"
+                  value={selected[p.id] || ""}
+                  onChange={(e) =>
+                    setSelected((old) => ({ ...old, [p.id]: e.target.value }))
+                  }
+                >
+                  <MenuItem value="">Choose a video</MenuItem>
+                  {videos
+                    .filter(
+                      (v) =>
+                        !p.items.some((i) => i.videoId === v.youtubeVideoId),
+                    )
+                    .map((v) => (
+                      <MenuItem
+                        value={v.youtubeVideoId}
+                        key={v.youtubeVideoId}
+                        sx={{ whiteSpace: "normal" }}
                       >
-                        <Box
-                          component="img"
-                          src={item.thumbnail}
-                          alt={item.title}
-                          sx={{
-                            width: 88,
-                            height: 50,
-                            borderRadius: 1,
-                            objectFit: "cover",
-                          }}
-                        />
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography
-                            sx={{ fontSize: 14, fontWeight: 600 }}
-                            noWrap
-                          >
-                            {item.title}
-                          </Typography>
-                          <Typography
-                            sx={{ fontSize: 12, opacity: 0.7 }}
-                            noWrap
-                          >
-                            {item.url}
-                          </Typography>
-                        </Box>
-                      </Box>
+                        {decodeTitle(v.title)}
+                      </MenuItem>
                     ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+                </TextField>
+                <Button
+                  disabled={busy || !selected[p.id]}
+                  onClick={() =>
+                    void run(async () => {
+                      const video = videos.find(
+                        (v) => v.youtubeVideoId === selected[p.id],
+                      );
+                      if (video)
+                        update(await addToPlaylist(audience, p.id, video));
+                      setSelected((old) => ({ ...old, [p.id]: "" }));
+                    })
+                  }
+                >
+                  Add
+                </Button>
+              </Box>
+              {p.items.map((item) => (
+                <Box
+                  key={item.id}
+                  sx={{
+                    display: "flex",
+                    gap: 1,
+                    alignItems: "center",
+                    py: 1,
+                    borderTop: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Button
+                    onClick={() =>
+                      navigate(
+                        (audience === "kids" ? "/kids/watch/" : "/watch/") +
+                          item.videoId,
+                      )
+                    }
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      p: 0,
+                      flexGrow: 1,
+                      minWidth: 0,
+                      textAlign: "left",
+                      justifyContent: "flex-start",
+                      textTransform: "none",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={item.thumbnail}
+                      alt=""
+                      sx={{
+                        width: 90,
+                        aspectRatio: "16/9",
+                        objectFit: "cover",
+                        borderRadius: 1,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {decodeTitle(item.title)}
+                    </Typography>
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () =>
+                        update(
+                          await removeFromPlaylist(
+                            audience,
+                            p.id,
+                            item.videoId,
+                          ),
+                        ),
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              ))}
+              {!p.items.length && (
+                <Typography color="text.secondary">
+                  Add saved videos above, or search in Parent Mode.
+                </Typography>
+              )}
+            </Card>
           ))}
-        </Grid>
+          {!playlists.length && (
+            <Typography color="text.secondary">
+              Create your first {audience === "kids" ? "kids" : "personal"}{" "}
+              playlist above.
+            </Typography>
+          )}
+        </Box>
       )}
     </Box>
   );
-};
-
-export default PlaylistPage;
+}

@@ -30,7 +30,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import ChildCareIcon from "@mui/icons-material/ChildCare";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import { useNavigate } from "react-router-dom";
-import { fetchApprovedVideos } from "../api/parentalApi";
+import { listVideos } from "../api/libraryApi";
 import { useAuth } from "./Auth/AuthContext";
 import { useThemeMode } from "./ThemeContext";
 
@@ -73,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
   const navigate = useNavigate();
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   const auth = useAuth();
@@ -112,14 +112,14 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
     }
 
     try {
-      const approved = await fetchApprovedVideos();
+      const approved = await listVideos("parent");
       const term = query.trim().toLowerCase();
       setSuggestions(approved.filter(video => video.title.toLowerCase().includes(term) || video.channelName.toLowerCase().includes(term) || query.includes(video.youtubeVideoId)).map(video => ({ id: video.youtubeVideoId, title: video.title, subTitle: video.channelName, thumbnail: video.thumbnail, type: "video" as const })));
     } catch { setSuggestions([]); }
   };
 
   const handleSuggestionClick = (item: SearchResult) => {
-    navigate(`/kids/watch/${item.id}`);
+    navigate(`/watch/${item.id}`);
     setSearchQuery("");
     setShowSuggestions(false);
   };
@@ -145,7 +145,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
     >
       <Box
         sx={{
-          backgroundColor: isDark ? "rgba(10,10,10,0.75)" : "rgba(255,255,255,0.75)",
+          backgroundColor: isDark ? "rgba(11,19,43,0.95)" : "rgba(255,255,255,0.75)",
           backdropFilter: "blur(25px)",
           WebkitBackdropFilter: "blur(25px)",
           borderRadius: "22px",
@@ -176,32 +176,9 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
               <MenuIcon />
             </IconButton>
             <Box display="flex" alignItems="center" gap={1} sx={{ cursor: "pointer", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", "&:hover": { transform: "scale(1.02)" } }} onClick={() => navigate("/")}>
-              <Box
-                sx={{
-                  width: 28,
-                  height: 28,
-                  bgcolor: primaryColor,
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "none",
-                  background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)`,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 0,
-                    height: 0,
-                    borderTop: "5px solid transparent",
-                    borderBottom: "5px solid transparent",
-                    borderLeft: "8px solid white",
-                    ml: "2px",
-                  }}
-                />
-              </Box>
+              <Box component="img" src="/littleloop.svg" alt="LittleLoop" sx={{ width: 36, height: 36 }} />
               {!isMobile && (
-                <Typography sx={{ fontWeight: 700, fontSize: "20px", letterSpacing: "-0.3px", color: isDark ? "#fff" : "#000" }}>TomTube</Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: "20px", letterSpacing: "-0.3px", color: isDark ? "#fff" : "#000" }}>LittleLoop</Typography>
               )}
             </Box>
           </Box>
@@ -246,7 +223,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
                   handleSearch(e.target.value);
                   setShowSuggestions(true);
                 }}
-                placeholder="Search..."
+                placeholder="Search My Videos..."
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": { border: "none" },
@@ -340,17 +317,17 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isSidebarExpanded }) =
                <Divider sx={{ opacity: 0.1 }} />
 
                <MenuItem onClick={() => { handleClose(); navigate("/kids"); }} sx={{ py: 1.2 }}>
-                 <ChildCareIcon sx={{ fontSize: 20, mr: 1.5, color: "#ff9800" }} /> Kids Zone
+                 <ChildCareIcon sx={{ fontSize: 20, mr: 1.5, color: primaryColor }} /> LittleLoop Kids
                </MenuItem>
                <MenuItem onClick={() => { handleClose(); navigate("/parent"); }} sx={{ py: 1.2 }}>
-                 <FamilyRestroomIcon sx={{ fontSize: 20, mr: 1.5, color: "#2196f3" }} /> Parent Mode
+                 <FamilyRestroomIcon sx={{ fontSize: 20, mr: 1.5, color: primaryColor }} /> Parent Mode
                </MenuItem>
                <Divider sx={{ opacity: 0.1 }} />
                
                <Box sx={{ p: 2 }}>
                   <Typography variant="caption" sx={{ color: "gray", fontWeight: 600, mb: 1, display: "block" }}>Branding Color</Typography>
                   <Box display="flex" gap={1} flexWrap="wrap">
-                    {["#ff0000", "#3ea6ff", "#9d4edd", "#2d6a4f", "#ff9f1c"].map(c => (
+                    {["#e47764", "#bb2d40", "#842442"].map(c => (
                       <Box 
                         key={c} 
                         onClick={() => setPrimaryColor(c)}

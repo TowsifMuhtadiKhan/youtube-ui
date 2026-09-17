@@ -21,6 +21,7 @@ export interface ScreenTimeData {
 }
 
 export interface TrackResult {
+  reason?: string;
   allowed: boolean;
   remainingSeconds: number;
   watchedSeconds: number;
