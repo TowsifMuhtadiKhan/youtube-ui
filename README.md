@@ -40,7 +40,26 @@ To grant an administrator, use the Supabase Auth Admin API from a trusted server
 
 ## Deployment
 
-Deploy the root frontend to Netlify or another static host using npm run build and publish dist. Configure the same three VITE_ variables at build time. Configure your host to serve index.html for application routes. Supabase hosts authentication and database functions; no Vercel/Next.js backend deployment is needed.
+### Vercel
+
+1. Prepare a hosted Supabase project using the Hosted setup steps above, including applying every migration. The local Docker database cannot serve the published app.
+2. Push this repository to GitHub, then import it at https://vercel.com/new.
+3. Select the repository root (`./`) as the Root Directory, not `backend/`. The committed `vercel.json` sets the Vite framework, `npm ci` installation, `npm run build` build command, `dist` output, and the fallback to `index.html` for application routes.
+4. Add these environment variables in Vercel before deploying:
+
+   | Variable | Value |
+   | --- | --- |
+   | `VITE_SUPABASE_URL` | Your hosted project's HTTPS URL |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | Your hosted project's public publishable key |
+   | `VITE_YOUTUBE_API_KEY` | Your YouTube Data API key for searches and imports |
+
+   Set them for Production and for Preview if you want working preview deployments. Never put a Supabase secret or service-role key in a `VITE_` variable: these values are included in the browser bundle. Local environment files are ignored by Git; configure Vercel's variables separately. Redeploy after changing any build-time variable.
+5. Click Deploy. In Supabase Authentication > URL Configuration, set Site URL to the published HTTPS address and allow the authentication redirect URLs used by your app. Allow your published website in the YouTube API key's website restrictions, and restrict the key to the YouTube Data API.
+6. Check signup/email confirmation, login, adding a video, and refreshing an internal application URL on the published site.
+
+Supabase hosts authentication and database functions. The legacy `backend/` directory does not need a separate deployment. Existing local users and data are not automatically copied to hosted Supabase.
+
+Other static hosts can use `npm run build` with `dist` as the publish directory and an `index.html` fallback for application routes.
 
 ## Existing data
 

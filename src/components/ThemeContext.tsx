@@ -40,16 +40,16 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         root.style.setProperty("--primary-color", primaryColor);
         
         if (colorMode === "dark") {
-            root.style.setProperty("--bg-primary", "#0b132b");
-            root.style.setProperty("--bg-secondary", "#10192f");
-            root.style.setProperty("--bg-card", "#131d36");
-            root.style.setProperty("--bg-card-hover", "#1c2841");
-            root.style.setProperty("--bg-surface", "#18233b");
+            root.style.setProperty("--bg-primary", "#0f0f0f");
+            root.style.setProperty("--bg-secondary", "#0f0f0f");
+            root.style.setProperty("--bg-card", "#272727");
+            root.style.setProperty("--bg-card-hover", "#3f3f3f");
+            root.style.setProperty("--bg-surface", "#1a1a1a");
             root.style.setProperty("--text-primary", "#f1f1f1");
             root.style.setProperty("--text-secondary", "#aaaaaa");
             root.style.setProperty("--text-muted", "#717171");
-            root.style.setProperty("--border-subtle", "#2b344b");
-            root.style.setProperty("--border-medium", "#3d465d");
+            root.style.setProperty("--border-subtle", "#3f3f3f");
+            root.style.setProperty("--border-medium", "#535353");
         } else {
             root.style.setProperty("--bg-primary", "#ffffff");
             root.style.setProperty("--bg-secondary", "#fff8f6");
@@ -76,14 +76,14 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     primary: { main: primaryColor, contrastText: primaryColor === '#e47764' ? '#0b132b' : '#ffffff' },
                     secondary: { main: '#842442' },
                     background: {
-                        default: colorMode === "dark" ? "#0b132b" : "#ffffff",
-                        paper: colorMode === "dark" ? "#131d36" : "#fff8f6",
+                        default: colorMode === "dark" ? "#0f0f0f" : "#ffffff",
+                        paper: colorMode === "dark" ? "#272727" : "#fff8f6",
                     },
                     text: {
                         primary: colorMode === "dark" ? "#f1f1f1" : "#0b132b",
                         secondary: colorMode === "dark" ? "#aaaaaa" : "#606060",
                     },
-                    divider: colorMode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)",
+                    divider: colorMode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
                 },
                 typography: {
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -97,17 +97,17 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     MuiCssBaseline: {
                         styleOverrides: {
                             body: {
-                                backgroundColor: colorMode === "dark" ? "#0b132b" : "#ffffff",
+                                backgroundColor: colorMode === "dark" ? "#0f0f0f" : "#ffffff",
                                 color: colorMode === "dark" ? "#f1f1f1" : "#0b132b",
                                 scrollbarWidth: "thin",
-                                scrollbarColor: colorMode === "dark" ? "#3d465d transparent" : "#ccc transparent",
+                                scrollbarColor: colorMode === "dark" ? "#535353 transparent" : "#ccc transparent",
                             },
                         },
                     },
                     MuiDivider: {
                         styleOverrides: {
                             root: {
-                                borderColor: colorMode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)",
+                                borderColor: colorMode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
                             },
                         },
                     },
@@ -120,7 +120,7 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     MuiTab: {
                         styleOverrides: {
                             root: {
-                                color: colorMode === "dark" ? "#888" : "#606060",
+                                color: colorMode === "dark" ? "#aaaaaa" : "#606060",
                                 textTransform: "none",
                                 fontFamily: "'Inter', sans-serif",
                                 "&.Mui-selected": {

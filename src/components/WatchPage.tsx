@@ -20,6 +20,7 @@ import ArrowBack from "@mui/icons-material/ArrowBack";
 import SafeYouTubePlayer from "./SafeYouTubePlayer";
 import ParentExitButton from "./Parental/ParentExitButton";
 import ThemeToggle from './ThemeToggle';
+import useAmbientColor from './useAmbientColor';
 import {
   listVideos,
   recordHistory,
@@ -61,6 +62,7 @@ export default function WatchPage({
     recorded = useRef(false);
   const flushPending = useRef<() => void>(() => {});
   const video = videos.find((v) => v.youtubeVideoId === id);
+  const ambientColor = useAmbientColor(video?.thumbnail);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -301,11 +303,47 @@ export default function WatchPage({
                 </Button>
               </Card>
             ) : (
-              <SafeYouTubePlayer
-                key={(id || "") + replay}
-                videoId={id!}
-                onPlaying={onPlaying}
-                onPaused={() => {
+              <Box
+                sx={{
+                  position: 'relative',
+                  borderRadius: { xs: 2, md: 3 },
+                  overflow: 'visible',
+                  '&::before': ambientColor ? {
+                    content: '""',
+                    position: 'absolute',
+                    top: '-20px',
+                    left: '-20px',
+                    right: '-20px',
+                    bottom: '-20px',
+                    background: `rgba(${ambientColor}, 0.35)`,
+                    filter: 'blur(40px)',
+                    borderRadius: '24px',
+                    pointerEvents: 'none',
+                    transition: 'background 1.5s ease, filter 0.5s ease',
+                    zIndex: 0,
+                  } : {},
+                  '&::after': ambientColor ? {
+                    content: '""',
+                    position: 'absolute',
+                    top: '-40px',
+                    left: '-40px',
+                    right: '-40px',
+                    bottom: '-40px',
+                    background: `rgba(${ambientColor}, 0.15)`,
+                    filter: 'blur(80px)',
+                    borderRadius: '40px',
+                    pointerEvents: 'none',
+                    transition: 'background 1.5s ease, filter 0.5s ease',
+                    zIndex: 0,
+                  } : {},
+                  '& > *': { position: 'relative', zIndex: 1 },
+                }}
+              >
+                <SafeYouTubePlayer
+                  key={(id || "") + replay}
+                  videoId={id!}
+                  onPlaying={onPlaying}
+                  onPaused={() => {
                   playing.current = false;
                   flushPending.current();
                 }}
@@ -314,6 +352,7 @@ export default function WatchPage({
                   setEnded(true);
                 }}
               />
+              </Box>
             )}
             <Typography
               component="h1"

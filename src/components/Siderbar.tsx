@@ -64,8 +64,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarExpanded, onClose }) => {
   const isActive = (path: string) => location.pathname === path;
 
   // Header Match Style (Floating Glass)
-  const glassBg = isDark ? "rgba(11,19,43,0.95)" : "rgba(255,255,255,0.75)";
-  const glassBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const glassBg = isDark ? "rgba(15,15,15,0.95)" : "rgba(255,255,255,0.75)";
+  const glassBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
   
   const bgActive = `${primaryColor}15`;
   const iconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)";
